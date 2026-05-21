@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const path = require('path');
 const Product = require('../models/product.model');
 const Order = require('../models/Order');
 
@@ -26,6 +27,31 @@ const parseNumber = (value) => {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseMaybeJson = (value) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return value;
+  }
+
+  const shouldParse =
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'));
+
+  if (!shouldParse) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch (error) {
+    return value;
+  }
 };
 
 const appendOrConditions = (filter, conditions) => {
@@ -92,6 +118,12 @@ const pickUpdateFields = (payload) => {
 const resolveProductStatusParam = (query) =>
   query.productStatus || query.product_status || query.condition || '';
 
+const buildImageUrl = (req, filePath) => {
+  const rootDir = path.join(__dirname, '..', '..');
+  const relativePath = path.relative(rootDir, filePath).replace(/\\/g, '/');
+  return `${req.protocol}://${req.get('host')}/${relativePath}`;
+};
+
 exports.createProduct = async (req, res) => {
   try {
     const {
@@ -117,6 +149,25 @@ exports.createProduct = async (req, res) => {
       });
     }
 
+    const normalizedLocation = parseMaybeJson(location);
+    const normalizedMeetingSpots = parseMaybeJson(meetingSpots);
+    const normalizedAvailableTimeSlots = parseMaybeJson(availableTimeSlots);
+    const normalizedImages = parseMaybeJson(images);
+
+    const baseImages = [];
+    if (Array.isArray(normalizedImages)) {
+      baseImages.push(...normalizedImages);
+    } else if (normalizedImages && typeof normalizedImages === 'object') {
+      baseImages.push(normalizedImages);
+    }
+
+    const uploadedImages = (req.files || []).map((file) => ({
+      url: buildImageUrl(req, file.path),
+      alt: file.originalname || 'product-image',
+    }));
+
+    const finalImages = [...baseImages, ...uploadedImages];
+
     const product = await Product.create({
       title,
       description,
@@ -127,10 +178,10 @@ exports.createProduct = async (req, res) => {
       usageLevel,
       videoUrl,
       status,
-      location,
-      meetingSpots,
-      availableTimeSlots,
-      images,
+      location: normalizedLocation,
+      meetingSpots: normalizedMeetingSpots,
+      availableTimeSlots: normalizedAvailableTimeSlots,
+      images: finalImages,
       seller: req.user._id,
     });
 
@@ -496,6 +547,61 @@ exports.getSuggestions = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Lỗi server khi lấy gợi ý tìm kiếm.',
+    });
+  }
+};
+
+exports.addProductImages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID sản phẩm không hợp lệ.',
+      });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy sản phẩm.',
+      });
+    }
+
+    const isOwner = product.seller?.toString() === req.user._id.toString();
+    if (!isOwner && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền cập nhật sản phẩm này.',
+      });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng chọn ít nhất một ảnh.',
+      });
+    }
+
+    const images = req.files.map((file) => ({
+      url: buildImageUrl(req, file.path),
+      alt: file.originalname || 'product-image',
+    }));
+
+    product.images = [...(product.images || []), ...images];
+    await product.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        product: buildProductResponse(product),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi server khi thêm ảnh sản phẩm.',
     });
   }
 };
