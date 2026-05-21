@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const transactionSchema = new mongoose.Schema(
+const orderSchema = new mongoose.Schema(
   {
     product: {
       type: mongoose.Schema.Types.ObjectId,
@@ -38,5 +38,7 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Transaction = mongoose.model('Transaction', transactionSchema);
-module.exports = Transaction;
+orderSchema.index({ product: 1, status: 1 });
+
+const Order = mongoose.model('Order', orderSchema);
+module.exports = Order;

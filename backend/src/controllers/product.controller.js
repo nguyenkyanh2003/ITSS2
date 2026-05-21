@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Product = require('../models/product.model');
-const Transaction = require('../models/transaction.model');
+const Order = require('../models/Order');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -401,21 +401,21 @@ exports.reserveProduct = async (req, res) => {
       });
     }
 
-    const existingTransaction = await Transaction.findOne({
+    const existingOrder = await Order.findOne({
       product: id,
       status: { $in: ['scheduling', 'pending'] },
     });
 
-    if (existingTransaction) {
+    if (existingOrder) {
       return res.status(409).json({
         success: false,
-        message: 'Sản phẩm đang có giao dịch đang xử lý.',
+        message: 'Sản phẩm đang có đơn hàng đang xử lý.',
       });
     }
 
     const { meetingSpot, timeSlot, note } = req.body;
 
-    const transaction = await Transaction.create({
+    const order = await Order.create({
       product: id,
       buyer: req.user._id,
       seller: product.seller,
@@ -432,12 +432,12 @@ exports.reserveProduct = async (req, res) => {
       success: true,
       message: 'Đã giữ chỗ sản phẩm. Vui lòng chọn lịch hẹn.',
       data: {
-        transaction: {
-          id: transaction._id,
-          status: transaction.status,
-          product: transaction.product,
-          buyer: transaction.buyer,
-          seller: transaction.seller,
+        order: {
+          id: order._id,
+          status: order.status,
+          product: order.product,
+          buyer: order.buyer,
+          seller: order.seller,
         },
         product: buildProductResponse(product),
       },
