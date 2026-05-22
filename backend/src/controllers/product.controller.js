@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const Product = require('../models/product.model');
 const Order = require('../models/Order');
+const { CAMPUS_LOCATION_IDS } = require('../constants/locations');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -52,6 +53,15 @@ const parseMaybeJson = (value) => {
   } catch (error) {
     return value;
   }
+};
+
+const normalizeLocationId = (value) => {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  return CAMPUS_LOCATION_IDS.has(normalized) ? normalized : null;
 };
 
 const appendOrConditions = (filter, conditions) => {
@@ -278,10 +288,34 @@ exports.getProducts = async (req, res) => {
 
     const projection = keyword ? { score: { $meta: 'textScore' } } : {};
 
-    const [products, total] = await Promise.all([
-      Product.find(filter, projection).sort(sort).skip(skip).limit(limit),
-      Product.countDocuments(filter),
-    ]);
+    let products;
+    let total = 0;
+
+    // Use aggregation $facet for efficient single-query pagination when
+    // there's no full-text search involved. If keyword/text search is used,
+    // keep the existing find + count approach to preserve textScore behavior.
+    if (!keyword) {
+      const pipeline = [];
+      if (Object.keys(filter).length) pipeline.push({ $match: filter });
+      pipeline.push({ $sort: sort || { createdAt: -1 } });
+      pipeline.push({
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limit }],
+          total: [{ $count: 'count' }],
+        },
+      });
+
+      const agg = await Product.aggregate(pipeline).allowDiskUse(true);
+      products = (agg[0] && agg[0].data) || [];
+      total = (agg[0] && agg[0].total[0] && agg[0].total[0].count) || 0;
+    } else {
+      const results = await Promise.all([
+        Product.find(filter, projection).sort(sort).skip(skip).limit(limit),
+        Product.countDocuments(filter),
+      ]);
+      products = results[0];
+      total = results[1];
+    }
 
     res.status(200).json({
       success: true,
@@ -445,13 +479,6 @@ exports.reserveProduct = async (req, res) => {
       });
     }
 
-    if (product.status !== 'available') {
-      return res.status(409).json({
-        success: false,
-        message: 'Sản phẩm đã được giữ chỗ hoặc không còn khả dụng.',
-      });
-    }
-
     const existingOrder = await Order.findOne({
       product: id,
       status: { $in: ['scheduling', 'pending'] },
@@ -464,35 +491,77 @@ exports.reserveProduct = async (req, res) => {
       });
     }
 
-    const { meetingSpot, timeSlot, note } = req.body;
-
-    const order = await Order.create({
-      product: id,
-      buyer: req.user._id,
-      seller: product.seller,
+    const {
+      meetingLocationId,
       meetingSpot,
+      proposedTimeSlots,
       timeSlot,
+      finalTime,
       note,
-      status: 'scheduling',
-    });
+    } = req.body;
 
-    product.status = 'reserved';
-    await product.save();
+    if (proposedTimeSlots || timeSlot || finalTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể chọn khung giờ khi tạo đơn hàng.',
+      });
+    }
 
-    res.status(201).json({
-      success: true,
-      message: 'Đã giữ chỗ sản phẩm. Vui lòng chọn lịch hẹn.',
-      data: {
-        order: {
-          id: order._id,
-          status: order.status,
-          product: order.product,
-          buyer: order.buyer,
-          seller: order.seller,
+    const normalizedLocationId = normalizeLocationId(meetingLocationId || meetingSpot);
+    if ((meetingLocationId !== undefined || meetingSpot !== undefined) && !normalizedLocationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Địa điểm giao dịch không hợp lệ.',
+      });
+    }
+
+    let reservedProduct;
+
+    try {
+      reservedProduct = await Product.findOneAndUpdate(
+        { _id: id, status: 'available' },
+        { status: 'reserved' },
+        { new: true }
+      );
+
+      if (!reservedProduct) {
+        return res.status(409).json({
+          success: false,
+          message: 'Sản phẩm đã có người đặt.',
+        });
+      }
+
+      const order = await Order.create({
+        product: id,
+        buyer: req.user._id,
+        seller: product.seller,
+        meetingLocationId: normalizedLocationId || undefined,
+        meetingSpot: normalizedLocationId || undefined,
+        note,
+        status: 'scheduling',
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Đã giữ chỗ sản phẩm. Vui lòng chọn lịch hẹn.',
+        data: {
+          order: {
+            id: order._id,
+            status: order.status,
+            product: order.product,
+            buyer: order.buyer,
+            seller: order.seller,
+          },
+          product: buildProductResponse(product),
         },
-        product: buildProductResponse(product),
-      },
-    });
+      });
+    } catch (error) {
+      if (reservedProduct) {
+        await Product.findByIdAndUpdate(reservedProduct._id, { status: 'available' });
+      }
+
+      throw error;
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -503,51 +572,49 @@ exports.reserveProduct = async (req, res) => {
 
 exports.getSuggestions = async (req, res) => {
   try {
-    const keyword = (req.query.keyword || req.query.search || req.query.q || '').trim();
-    const limit = Math.min(Number.parseInt(req.query.limit, 10) || 10, 20);
+    const q = (req.query.keyword || req.query.search || req.query.q || '').trim();
+    const limit = Math.min(Number.parseInt(req.query.limit, 10) || 10, 50);
 
-    if (!keyword) {
-      return res.status(200).json({
-        success: true,
-        data: {
-          suggestions: [],
-        },
-      });
+    if (q.length < 2) {
+      return res.status(200).json({ success: true, data: { suggestions: [] } });
     }
 
-    const regex = new RegExp(escapeRegex(keyword), 'i');
+    // Use prefix-anchored regex to favor index usage for prefix searches.
+    const prefix = '^' + escapeRegex(q);
+    const regex = new RegExp(prefix, 'i');
+
     const candidates = await Product.find({
-      $or: [{ title: regex }, { category: regex }, { description: regex }],
+      $or: [{ title: regex }, { category: regex }],
     })
       .select('title category')
-      .limit(limit * 2);
+      .limit(limit * 3)
+      .lean();
 
-    const suggestions = [];
     const seen = new Set();
+    const suggestions = [];
 
-    candidates.forEach((product) => {
-      if (product.title && !seen.has(product.title)) {
-        suggestions.push({ type: 'title', value: product.title });
-        seen.add(product.title);
+    for (const c of candidates) {
+      if (c.title) {
+        const key = c.title.trim().toLowerCase();
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          suggestions.push({ type: 'title', value: c.title });
+        }
       }
-
-      if (product.category && !seen.has(product.category)) {
-        suggestions.push({ type: 'category', value: product.category });
-        seen.add(product.category);
+      if (c.category) {
+        const key = c.category.trim().toLowerCase();
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          suggestions.push({ type: 'category', value: c.category });
+        }
       }
-    });
+      if (suggestions.length >= limit) break;
+    }
 
-    res.status(200).json({
-      success: true,
-      data: {
-        suggestions: suggestions.slice(0, limit),
-      },
-    });
+    return res.status(200).json({ success: true, data: { suggestions: suggestions.slice(0, limit) } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Lỗi server khi lấy gợi ý tìm kiếm.',
-    });
+    console.error('getSuggestions error', error);
+    return res.status(500).json({ success: false, message: error.message || 'Lỗi server khi lấy gợi ý tìm kiếm.' });
   }
 };
 

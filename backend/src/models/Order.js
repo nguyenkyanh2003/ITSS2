@@ -26,7 +26,20 @@ const orderSchema = new mongoose.Schema(
       default: 'scheduling',
       index: true,
     },
+    meetingLocationId: { type: String, trim: true },
     meetingSpot: { type: String, trim: true },
+    proposedTimeSlots: [
+      {
+        startAt: { type: Date },
+        endAt: { type: Date },
+        note: { type: String, trim: true },
+      },
+    ],
+    finalTime: {
+      startAt: { type: Date },
+      endAt: { type: Date },
+      note: { type: String, trim: true },
+    },
     scheduledTime: { type: Date },
     timeSlot: {
       startAt: { type: Date },

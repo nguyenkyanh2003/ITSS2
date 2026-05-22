@@ -53,5 +53,16 @@ const productSchema = new mongoose.Schema(
 
 productSchema.index({ title: 'text', description: 'text', category: 'text' });
 
+// Additional single-field indexes to improve common filter/sort performance
+productSchema.index({ category: 1 });
+productSchema.index({ price: 1 });
+productSchema.index({ createdAt: -1 });
+productSchema.index({ 'location.campusArea': 1 });
+productSchema.index({ 'location.city': 1 });
+
+// Compound indexes for common query patterns
+productSchema.index({ status: 1, category: 1, price: 1 });
+productSchema.index({ price: 1, createdAt: -1 });
+
 const Product = mongoose.model('Product', productSchema);
 module.exports = Product;
