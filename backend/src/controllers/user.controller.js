@@ -6,7 +6,7 @@ const buildUserResponse = (user, viewer) => {
     viewer && (viewer.role === 'admin' || viewer._id?.toString() === user._id.toString())
   );
   const showEmail = user.contactPreferences?.showEmail || canSeeContact;
-  const showPhone = user.contactPreferences?.showPhone || canSeeContact;
+  const showPhone = canSeeContact;
 
   const response = {
     id: user._id,
