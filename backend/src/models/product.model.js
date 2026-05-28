@@ -5,14 +5,17 @@ const productSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
     price: { type: Number, required: true, min: 0 },
+    originalPrice: { type: Number, min: 0, required: false },
+    discountPercent: { type: Number, min: 0, max: 100, required: false },
+    isFeatured: { type: Boolean, default: false },
     category: { type: String, trim: true },
     productStatus: {
       type: String,
       enum: ['new', 'used', 'other'],
       default: 'used',
     },
-    purchaseDate: { type: Date },
-    usageLevel: { type: String, trim: true },
+    purchaseDate: { type: Date, required: false },
+    usageLevel: { type: String, trim: true, required: false },
     videoUrl: { type: String, trim: true },
     status: {
       type: String,
@@ -20,6 +23,7 @@ const productSchema = new mongoose.Schema(
       default: 'available',
       index: true,
     },
+    stock: { type: Number, default: 1, required: true },
     location: {
       campusArea: { type: String, trim: true },
       dorm: { type: String, trim: true },   
@@ -29,9 +33,7 @@ const productSchema = new mongoose.Schema(
     meetingSpots: [{ type: String, trim: true }],
     availableTimeSlots: [
       {
-        startAt: { type: Date },
-        endAt: { type: Date },
-        note: { type: String, trim: true },
+        note: { type: String, trim: true, required: false },
       },
     ],
     images: [
@@ -45,6 +47,13 @@ const productSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
       index: true,
+    },
+    reservedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
+      index: true,
+      default: null,
     },
     viewCount: { type: Number, default: 0, min: 0 },
   },

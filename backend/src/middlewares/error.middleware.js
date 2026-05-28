@@ -15,7 +15,7 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'MulterError') {
     statusCode = 400;
     if (err.code === 'LIMIT_FILE_SIZE') {
-      message = 'File qua lon. Gioi han 5MB.';
+      message = 'File qua lon.';
     } else {
       message = 'Loi upload file.';
     }

@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user.controller');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
+const { uploadAvatarImage } = require('../middlewares/upload.middleware');
 
 router.get('/', protect, restrictTo('admin'), userController.getAllUsers);
 router.get('/me', protect, userController.getMe);
 router.patch('/me', protect, userController.updateMe);
+router.patch('/me/avatar', protect, uploadAvatarImage, userController.updateAvatar);
 router.patch('/me/password', protect, userController.changePassword);
 router.patch('/me/deactivate', protect, userController.deactivateMe);
 

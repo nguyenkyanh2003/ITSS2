@@ -2,11 +2,22 @@ const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema(
   {
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
-      required: true,
-      index: true,
+    items: [
+      {
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Product',
+          required: true,
+        },
+        quantity: { type: Number, required: true },
+        price: { type: Number, required: true },
+      },
+    ],
+    totalPrice: { type: Number, required: true },
+    paymentMethod: {
+      type: String,
+      enum: ['COD', 'Bank Transfer'],
+      default: 'COD',
     },
     buyer: {
       type: mongoose.Schema.Types.ObjectId,
@@ -51,7 +62,7 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-orderSchema.index({ product: 1, status: 1 });
+orderSchema.index({ 'items.product': 1, status: 1 });
 
 const Order = mongoose.model('Order', orderSchema);
 module.exports = Order;

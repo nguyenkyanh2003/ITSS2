@@ -6,7 +6,9 @@ const { CAMPUS_LOCATION_IDS } = require('../constants/locations');
 
 const buildOrderResponse = (order) => ({
   id: order._id,
-  product: order.product,
+  items: order.items || [],
+  totalPrice: order.totalPrice,
+  paymentMethod: order.paymentMethod,
   buyer: order.buyer,
   seller: order.seller,
   status: order.status,
@@ -90,7 +92,8 @@ const isSameTimeSlot = (left, right) => {
 
 exports.createOrder = async (req, res) => {
   const {
-    productId,
+    items,
+    paymentMethod,
     meetingLocationId,
     meetingSpot,
     proposedTimeSlots,
@@ -99,10 +102,40 @@ exports.createOrder = async (req, res) => {
     note,
   } = req.body;
 
-  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+  // Validate items array
+  if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'ID sản phẩm không hợp lệ.',
+      message: 'Vui lòng cung cấp ít nhất một sản phẩm.',
+    });
+  }
+
+  // Validate each item
+  for (const item of items) {
+    if (!item.product || !mongoose.Types.ObjectId.isValid(item.product)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID sản phẩm không hợp lệ.',
+      });
+    }
+    if (!item.quantity || item.quantity <= 0 || !Number.isInteger(item.quantity)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Số lượng sản phẩm phải là số nguyên dương.',
+      });
+    }
+    if (!item.price || item.price <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Giá sản phẩm không hợp lệ.',
+      });
+    }
+  }
+
+  if (proposedTimeSlots || timeSlot || finalTime) {
+    return res.status(400).json({
+      success: false,
+      message: 'Không thể chọn khung giờ khi tạo đơn hàng.',
     });
   }
 
@@ -113,93 +146,116 @@ exports.createOrder = async (req, res) => {
     session = await mongoose.startSession();
     session.startTransaction();
 
-    const product = await Product.findById(productId).session(session);
-    if (!product) {
+    // Fetch all products and check stock & seller
+    const productIds = items.map((item) => item.product);
+    const products = await Product.find({ _id: { $in: productIds } }).session(session);
+
+    if (products.length !== items.length) {
       if (session.inTransaction()) {
         await session.abortTransaction();
       }
-
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy sản phẩm.',
+        message: 'Một hoặc nhiều sản phẩm không tồn tại.',
       });
     }
 
-    if (product.seller?.toString() === req.user._id.toString()) {
+    // Create a map of products by ID for quick lookup
+    const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+
+    // Get seller ID from first product (assuming all products from same seller)
+    const sellerId = products[0].seller;
+    
+    // Check if buyer is seller
+    if (sellerId?.toString() === req.user._id.toString()) {
       if (session.inTransaction()) {
         await session.abortTransaction();
       }
-
       return res.status(400).json({
         success: false,
         message: 'Bạn không thể đặt mua sản phẩm của chính mình.',
       });
     }
 
-    const existingOrder = await Order.findOne({
-      product: productId,
-      status: { $in: ['scheduling', 'pending'] },
-    }).session(session);
-
-    if (existingOrder) {
+    // Check all sellers are the same (if multi-seller needed, remove this)
+    const allSameSeller = products.every((p) => p.seller?.toString() === sellerId?.toString());
+    if (!allSameSeller) {
       if (session.inTransaction()) {
         await session.abortTransaction();
       }
-
-      return res.status(409).json({
-        success: false,
-        message: 'Sản phẩm đang có đơn hàng đang xử lý.',
-      });
-    }
-
-    if (proposedTimeSlots || timeSlot || finalTime) {
-      if (session.inTransaction()) {
-        await session.abortTransaction();
-      }
-
       return res.status(400).json({
         success: false,
-        message: 'Không thể chọn khung giờ khi tạo đơn hàng.',
+        message: 'Tất cả sản phẩm phải từ cùng một người bán.',
       });
     }
 
-    const normalizedLocationId = normalizeLocationId(meetingLocationId || meetingSpot);
-    if ((meetingLocationId !== undefined || meetingSpot !== undefined) && !normalizedLocationId) {
+    // Validate stock for each item
+    let totalPrice = 0;
+    const orderItems = [];
+
+    for (const item of items) {
+      const product = productMap.get(item.product.toString());
+      if (!product) {
+        if (session.inTransaction()) {
+          await session.abortTransaction();
+        }
+        return res.status(404).json({
+          success: false,
+          message: `Sản phẩm ${item.product} không tồn tại.`,
+        });
+      }
+
+      if (product.stock < item.quantity) {
+        if (session.inTransaction()) {
+          await session.abortTransaction();
+        }
+        return res.status(409).json({
+          success: false,
+          message: `Sản phẩm "${product.title}" chỉ còn ${product.stock} cái, không đủ ${item.quantity} cái.`,
+        });
+      }
+
+      const actualPrice = product.price;
+      const itemTotal = actualPrice * item.quantity;
+      totalPrice += itemTotal;
+      orderItems.push({
+        product: item.product,
+        quantity: item.quantity,
+        price: actualPrice,
+      });
+    }
+
+    // Validate meeting location
+    const normalizedLocationId = normalizeLocationId(meetingLocationId);
+    const meetingLocationText = typeof meetingLocationId === 'string' ? meetingLocationId.trim() : '';
+    const normalizedSpot = typeof meetingSpot === 'string' ? meetingSpot.trim() : '';
+    const rawSpot = normalizedSpot || (normalizedLocationId ? '' : meetingLocationText);
+    const spotAsLocationId = normalizeLocationId(rawSpot);
+
+    if (!rawSpot && !normalizedLocationId) {
       if (session.inTransaction()) {
         await session.abortTransaction();
       }
-
       return res.status(400).json({
         success: false,
-        message: 'Địa điểm giao dịch không hợp lệ.',
+        message: 'Vui lòng chọn hoặc nhập địa điểm giao dịch.',
       });
     }
 
-    const reservedProduct = await Product.findOneAndUpdate(
-      { _id: productId, status: 'available' },
-      { status: 'reserved' },
-      { new: true, session }
-    );
+    const finalMeetingLocationId = normalizedLocationId || spotAsLocationId || undefined;
+    const finalMeetingSpot = rawSpot || undefined;
 
-    if (!reservedProduct) {
-      if (session.inTransaction()) {
-        await session.abortTransaction();
-      }
-
-      return res.status(409).json({
-        success: false,
-        message: 'Sản phẩm đã có người đặt.',
-      });
-    }
-
+    // Create order with new schema
     const [order] = await Order.create(
       [
         {
-          product: productId,
+          items: orderItems,
+          totalPrice,
+          paymentMethod: paymentMethod || 'COD',
           buyer: req.user._id,
-          seller: product.seller,
-          meetingLocationId: normalizedLocationId || undefined,
-          meetingSpot: normalizedLocationId || undefined,
+          seller: sellerId,
+          meetingLocationId: finalMeetingLocationId,
+          meetingSpot: finalMeetingSpot,
           note,
           status: 'scheduling',
         },
@@ -207,11 +263,23 @@ exports.createOrder = async (req, res) => {
       { session }
     );
 
+    // Deduct stock from all products
+    for (const item of items) {
+      await Product.findByIdAndUpdate(
+        item.product,
+        { $inc: { stock: -item.quantity } },
+        { session }
+      );
+    }
+
     await session.commitTransaction();
+
+    // Populate items with product details for response
+    await order.populate('items.product', 'title price images');
 
     return res.status(201).json({
       success: true,
-      message: 'Đã giữ chỗ sản phẩm. Vui lòng chọn lịch hẹn.',
+      message: 'Đã tạo đơn hàng. Vui lòng chọn lịch hẹn.',
       data: {
         order: buildOrderResponse(order),
       },
@@ -227,11 +295,10 @@ exports.createOrder = async (req, res) => {
     }
 
     const buyerId = req.user?._id ? req.user._id.toString() : 'unknown';
-    const safeProductId = productId || 'unknown';
     const errorMessage = error?.message || String(error);
 
     console.error(
-      `[ORDER_ROLLBACK] buyerId=${buyerId} productId=${safeProductId} error=${errorMessage}`
+      `[ORDER_ROLLBACK] buyerId=${buyerId} error=${errorMessage}`
     );
 
     return res.status(500).json({
@@ -258,7 +325,12 @@ exports.getMyOrders = async (req, res) => {
       filter.$or = [{ buyer: req.user._id }, { seller: req.user._id }];
     }
 
-    const orders = await Order.find(filter).sort({ updatedAt: -1 }).limit(50);
+    const orders = await Order.find(filter)
+      .sort({ updatedAt: -1 })
+      .limit(50)
+      .populate('items.product', 'title price images category productStatus status')
+      .populate('seller', 'fullName')
+      .populate('buyer', 'fullName');
 
     res.status(200).json({
       success: true,
@@ -532,7 +604,14 @@ exports.completeOrder = async (req, res) => {
     order.status = 'completed';
     await order.save();
 
-    await Product.findByIdAndUpdate(order.product, { status: 'sold' });
+    // Mark all products as sold
+    if (order.items && order.items.length > 0) {
+      const productIds = order.items.map((item) => item.product);
+      await Product.updateMany(
+        { _id: { $in: productIds } },
+        { status: 'sold' }
+      );
+    }
 
     res.status(200).json({
       success: true,
@@ -550,6 +629,9 @@ exports.completeOrder = async (req, res) => {
 };
 
 exports.cancelOrder = async (req, res) => {
+  let session;
+  let sessionEnded = false;
+
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -559,8 +641,12 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
-    const order = await Order.findById(id);
+    session = await mongoose.startSession();
+    session.startTransaction();
+
+    const order = await Order.findById(id).session(session);
     if (!order) {
+      if (session.inTransaction()) await session.abortTransaction();
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy đơn hàng.',
@@ -568,6 +654,7 @@ exports.cancelOrder = async (req, res) => {
     }
 
     if (!ensureParticipant(order, req.user._id.toString())) {
+      if (session.inTransaction()) await session.abortTransaction();
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền cập nhật đơn hàng này.',
@@ -575,6 +662,7 @@ exports.cancelOrder = async (req, res) => {
     }
 
     if (order.status === 'completed') {
+      if (session.inTransaction()) await session.abortTransaction();
       return res.status(400).json({
         success: false,
         message: 'Đơn hàng đã hoàn tất, không thể hủy.',
@@ -582,6 +670,7 @@ exports.cancelOrder = async (req, res) => {
     }
 
     if (order.status === 'cancelled') {
+      if (session.inTransaction()) await session.abortTransaction();
       return res.status(400).json({
         success: false,
         message: 'Đơn hàng đã bị hủy.',
@@ -589,9 +678,23 @@ exports.cancelOrder = async (req, res) => {
     }
 
     order.status = 'cancelled';
-    await order.save();
+    await order.save({ session });
 
-    await Product.findByIdAndUpdate(order.product, { status: 'available' });
+    // Restore stock for all items in order and set status back to available
+    if (order.items && order.items.length > 0) {
+      for (const item of order.items) {
+        await Product.findByIdAndUpdate(
+          item.product,
+          { 
+            $inc: { stock: item.quantity },
+            $set: { status: 'available' }
+          },
+          { session }
+        );
+      }
+    }
+
+    await session.commitTransaction();
 
     res.status(200).json({
       success: true,
@@ -601,9 +704,22 @@ exports.cancelOrder = async (req, res) => {
       },
     });
   } catch (error) {
+    if (session?.inTransaction()) {
+      await session.abortTransaction();
+    }
+    
+    if (session) {
+      session.endSession();
+      sessionEnded = true;
+    }
+
     res.status(500).json({
       success: false,
       message: error.message || 'Lỗi server khi hủy đơn hàng.',
     });
+  } finally {
+    if (session && !sessionEnded) {
+      session.endSession();
+    }
   }
 };

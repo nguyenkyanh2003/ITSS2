@@ -39,9 +39,9 @@ const buildUserResponse = (user, viewer) => {
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const pickUpdateFields = (payload) => {
-  const allowedFields = [
-    'fullName',
-    'phoneNumber',
+  const updates = {};
+  const simpleFields = ['fullName', 'phoneNumber'];
+  const nestedFields = [
     'student',
     'profile',
     'location',
@@ -49,10 +49,20 @@ const pickUpdateFields = (payload) => {
     'socialLinks',
   ];
 
-  const updates = {};
-  allowedFields.forEach((field) => {
+  simpleFields.forEach((field) => {
     if (payload[field] !== undefined) {
       updates[field] = payload[field];
+    }
+  });
+
+  nestedFields.forEach((field) => {
+    const value = payload[field];
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      Object.entries(value).forEach(([key, nestedValue]) => {
+        if (nestedValue !== undefined) {
+          updates[`${field}.${key}`] = nestedValue;
+        }
+      });
     }
   });
 
@@ -153,7 +163,7 @@ exports.updateMe = async (req, res) => {
 
     const updates = pickUpdateFields(req.body);
     const updatedUser = await User.findByIdAndUpdate(req.user._id, updates, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     });
 
@@ -167,6 +177,36 @@ exports.updateMe = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Lỗi server khi cập nhật thông tin',
+    });
+  }
+};
+
+exports.updateAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng chọn ảnh đại diện.',
+      });
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { 'profile.avatarUrl': avatarUrl },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: buildUserResponse(updatedUser, req.user),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi server khi cập nhật ảnh đại diện',
     });
   }
 };
@@ -407,7 +447,7 @@ exports.updateUserStatus = async (req, res) => {
     }
 
     const updatedUser = await User.findByIdAndUpdate(id, updates, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     });
 

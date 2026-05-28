@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const path = require('path');
 const Product = require('../models/product.model');
+const User = require('../models/user.model');
 const Order = require('../models/Order');
 const { CAMPUS_LOCATION_IDS } = require('../constants/locations');
 
@@ -77,43 +78,129 @@ const appendOrConditions = (filter, conditions) => {
   filter.$or = filter.$or.concat(conditions);
 };
 
-const buildProductResponse = (product) => ({
+
+
+const buildSellerResponse = (seller, baseUrl = null) => {
+  if (!seller) return null;
+
+  if (!seller.fullName && !seller.email) {
+    return { id: seller.toString ? seller.toString() : seller };
+  }
+
+  return {
+    id: seller._id,
+    fullName: seller.fullName,
+    email: seller.email,
+    // avatarUrl may be a relative path from seeds; normalize on response side
+    avatarUrl: normalizeMediaUrl(seller.profile?.avatarUrl || null, baseUrl),
+    bio: seller.profile?.bio || null,
+    city: seller.location?.city || null,
+    campusArea: seller.location?.campusArea || null,
+    isVerified: Boolean(seller.isVerified),
+    verified: Boolean(seller.isVerified),
+    rating: seller.trustStats?.averageRating || seller.stats?.averageRating || null,
+    stats: seller.stats || null,
+    trustStats: seller.trustStats || null,
+    followersCount: seller.followersCount || 0,
+    followingCount: seller.followingCount || 0,
+  };
+};
+
+const normalizeMediaUrl = (url, baseUrl) => {
+  if (!url) return null;
+  const str = String(url).trim();
+  if (!str) return null;
+  if (/^https?:\/\//i.test(str) || /^\/\//.test(str)) return str;
+  if (str.startsWith('/')) {
+    return baseUrl ? `${baseUrl}${str}` : str;
+  }
+  return str;
+};
+
+const getIdString = (value) => {
+  if (!value) return null;
+  if (value._id) return value._id.toString();
+  if (value.toString) return value.toString();
+  return String(value);
+};
+
+const buildBookingResponse = (order) => {
+  if (!order) return undefined;
+
+  const note = order.timeSlot?.note || order.finalTime?.note || order.note || '';
+  const time = note.startsWith('Time:') ? note.replace(/^Time:\s*/i, '').trim() : note;
+
+  return {
+    time,
+    spot: order.meetingSpot || order.meetingLocationId || '',
+  };
+};
+
+const buildProductResponse = (product, baseUrl = null, options = {}) => ({
   id: product._id,
   title: product.title,
   description: product.description,
   price: product.price,
+  stock: product.stock,
+  originalPrice: product.originalPrice,
+  discountPercent: product.discountPercent,
   category: product.category,
   productStatus: product.productStatus,
   purchaseDate: product.purchaseDate,
   usageLevel: product.usageLevel,
   videoUrl: product.videoUrl,
-  status: product.status,
+  isFeatured: product.isFeatured,
+  // Map internal status to frontend-friendly status keys
+  status: product.status === 'available' ? 'in-stock' : product.status,
   location: product.location,
   meetingSpots: product.meetingSpots,
   availableTimeSlots: product.availableTimeSlots,
+  reservedBy: options.reservedBy || getIdString(product.reservedBy),
+  booking: options.booking,
   images: product.images,
-  seller: product.seller,
+  images: Array.isArray(product.images)
+    ? product.images.map((img) => {
+        const leanImg = img.toObject ? img.toObject() : img;
+        return {
+          ...leanImg,
+          url: normalizeMediaUrl(leanImg.url || leanImg, baseUrl),
+        };
+      })
+    : product.images,
+  image: normalizeMediaUrl((product.images && product.images.length) ? product.images[0].url : null, baseUrl),
+  // normalize video url too
+  videoUrl: normalizeMediaUrl(product.videoUrl, baseUrl) || null,
+  seller: buildSellerResponse(product.seller, baseUrl),
   viewCount: product.viewCount,
   createdAt: product.createdAt,
   updatedAt: product.updatedAt,
 });
 
-const pickUpdateFields = (payload) => {
+const pickUpdateFields = (payload, options = {}) => {
+  const { isAdmin = false, allowStatus = false } = options;
   const allowedFields = [
     'title',
     'description',
     'price',
+    'originalPrice',
     'category',
     'productStatus',
     'purchaseDate',
     'usageLevel',
     'videoUrl',
-    'status',
     'location',
     'meetingSpots',
     'availableTimeSlots',
     'images',
   ];
+
+  if (isAdmin) {
+    allowedFields.push('isFeatured', 'discountPercent');
+  }
+
+  if (isAdmin || allowStatus) {
+    allowedFields.push('status');
+  }
 
   const updates = {};
   allowedFields.forEach((field) => {
@@ -140,11 +227,15 @@ exports.createProduct = async (req, res) => {
       title,
       description,
       price,
+      stock,
+      originalPrice,
+      discountPercent,
       category,
       productStatus,
       purchaseDate,
       usageLevel,
       videoUrl,
+      isFeatured,
       status,
       location,
       meetingSpots,
@@ -163,6 +254,16 @@ exports.createProduct = async (req, res) => {
     const normalizedMeetingSpots = parseMaybeJson(meetingSpots);
     const normalizedAvailableTimeSlots = parseMaybeJson(availableTimeSlots);
     const normalizedImages = parseMaybeJson(images);
+    const normalizedOriginalPrice = parseNumber(originalPrice);
+    let normalizedDiscountPercent = parseNumber(discountPercent);
+    const normalizedStock = parseNumber(stock);
+    const normalizedIsFeatured = String(isFeatured).toLowerCase() === 'true';
+
+    if (normalizedOriginalPrice && price && normalizedOriginalPrice > price) {
+      normalizedDiscountPercent = Math.round(((normalizedOriginalPrice - price) / normalizedOriginalPrice) * 100);
+    } else if (normalizedDiscountPercent === null) {
+      normalizedDiscountPercent = 0;
+    }
 
     const baseImages = [];
     if (Array.isArray(normalizedImages)) {
@@ -171,34 +272,54 @@ exports.createProduct = async (req, res) => {
       baseImages.push(normalizedImages);
     }
 
-    const uploadedImages = (req.files || []).map((file) => ({
-      url: buildImageUrl(req, file.path),
-      alt: file.originalname || 'product-image',
-    }));
+    let uploadedFiles = [];
+    if (!req.files) {
+      uploadedFiles = [];
+    } else if (Array.isArray(req.files)) {
+      uploadedFiles = req.files;
+    } else if (typeof req.files === 'object') {
+      uploadedFiles = Object.values(req.files).flat();
+    }
 
+    const uploadedImages = uploadedFiles
+      .filter((f) => f && f.fieldname === 'images')
+      .map((file) => ({
+        url: buildImageUrl(req, file.path),
+        alt: file.originalname || 'product-image',
+      }));
+
+    const videoFile = uploadedFiles.find((f) => f && f.fieldname === 'video');
     const finalImages = [...baseImages, ...uploadedImages];
 
     const product = await Product.create({
       title,
       description,
       price,
+      stock: normalizedStock ?? undefined,
+      originalPrice: normalizedOriginalPrice,
+      discountPercent: normalizedDiscountPercent,
       category,
       productStatus,
       purchaseDate,
       usageLevel,
       videoUrl,
+      isFeatured: normalizedIsFeatured,
       status,
       location: normalizedLocation,
       meetingSpots: normalizedMeetingSpots,
       availableTimeSlots: normalizedAvailableTimeSlots,
       images: finalImages,
+      videoUrl: videoFile ? buildImageUrl(req, videoFile.path) : videoUrl,
       seller: req.user._id,
     });
 
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
     res.status(201).json({
       success: true,
       data: {
-        product: buildProductResponse(product),
+        product: buildProductResponse(product, baseUrl, {
+          booking: buildBookingResponse(order),
+        }),
       },
     });
   } catch (error) {
@@ -231,6 +352,9 @@ exports.getProducts = async (req, res) => {
 
     if (statuses.length) {
       filter.status = { $in: statuses };
+    } else {
+      // Default to hide inactive products from public listings
+      filter.status = { $ne: 'inactive' };
     }
 
     if (productStatuses.length) {
@@ -287,36 +411,14 @@ exports.getProducts = async (req, res) => {
     }
 
     const projection = keyword ? { score: { $meta: 'textScore' } } : {};
+    const sellerPopulate = 'fullName email profile.avatarUrl profile.bio location isVerified stats trustStats followersCount followingCount';
 
-    let products;
-    let total = 0;
+    const [products, total] = await Promise.all([
+      Product.find(filter, projection).populate('seller', sellerPopulate).sort(sort).skip(skip).limit(limit),
+      Product.countDocuments(filter),
+    ]);
 
-    // Use aggregation $facet for efficient single-query pagination when
-    // there's no full-text search involved. If keyword/text search is used,
-    // keep the existing find + count approach to preserve textScore behavior.
-    if (!keyword) {
-      const pipeline = [];
-      if (Object.keys(filter).length) pipeline.push({ $match: filter });
-      pipeline.push({ $sort: sort || { createdAt: -1 } });
-      pipeline.push({
-        $facet: {
-          data: [{ $skip: skip }, { $limit: limit }],
-          total: [{ $count: 'count' }],
-        },
-      });
-
-      const agg = await Product.aggregate(pipeline).allowDiskUse(true);
-      products = (agg[0] && agg[0].data) || [];
-      total = (agg[0] && agg[0].total[0] && agg[0].total[0].count) || 0;
-    } else {
-      const results = await Promise.all([
-        Product.find(filter, projection).sort(sort).skip(skip).limit(limit),
-        Product.countDocuments(filter),
-      ]);
-      products = results[0];
-      total = results[1];
-    }
-
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
     res.status(200).json({
       success: true,
       pagination: {
@@ -326,7 +428,7 @@ exports.getProducts = async (req, res) => {
         totalPages: Math.ceil(total / limit),
       },
       data: {
-        products: products.map((product) => buildProductResponse(product)),
+        products: products.map((product) => buildProductResponse(product, baseUrl)),
       },
     });
   } catch (error) {
@@ -347,7 +449,10 @@ exports.getProductById = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(id);
+    const product = await Product.findById(id).populate(
+      'seller',
+      'fullName email profile.avatarUrl profile.bio location isVerified stats trustStats followersCount followingCount'
+    );
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -355,16 +460,67 @@ exports.getProductById = async (req, res) => {
       });
     }
 
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    let activeOrder = null;
+
+    if (req.user && product.status === 'reserved') {
+      activeOrder = await Order.findOne({
+        'items.product': id,
+        buyer: req.user._id,
+        status: { $in: ['scheduling', 'pending'] },
+      }).sort({ updatedAt: -1, createdAt: -1 });
+    }
+
     res.status(200).json({
       success: true,
       data: {
-        product: buildProductResponse(product),
+        product: buildProductResponse(product, baseUrl, {
+          booking: buildBookingResponse(activeOrder),
+          reservedBy: activeOrder ? getIdString(activeOrder.buyer) : null,
+        }),
       },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: error.message || 'Lỗi server khi lấy thông tin sản phẩm.',
+    });
+  }
+};
+
+exports.getHomeFeed = async (req, res) => {
+  try {
+    const limit = Math.min(Number.parseInt(req.query.limit, 10) || 12, 24);
+    const sellerPopulate = 'fullName email profile.avatarUrl profile.bio location isVerified stats trustStats followersCount followingCount';
+
+    const [featuredProducts, latestProducts, topSellers] = await Promise.all([
+      Product.find({ status: 'available', isFeatured: true })
+        .populate('seller', sellerPopulate)
+        .sort({ createdAt: -1 })
+        .limit(Math.min(limit, 8)),
+      Product.find({ status: 'available' })
+        .populate('seller', sellerPopulate)
+        .sort({ viewCount: -1, createdAt: -1 })
+        .limit(limit),
+      User.find({ status: 'active' })
+        .select('fullName email profile.avatarUrl profile.bio location isVerified stats trustStats followersCount followingCount')
+        .sort({ 'trustStats.averageRating': -1, followersCount: -1, 'stats.totalListings': -1 })
+        .limit(6),
+    ]);
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.status(200).json({
+      success: true,
+      data: {
+        featuredProducts: featuredProducts.map((product) => buildProductResponse(product, baseUrl)),
+        latestProducts: latestProducts.map((product) => buildProductResponse(product, baseUrl)),
+        topSellers: topSellers.map((seller) => buildSellerResponse(seller, baseUrl)),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi server khi lấy dữ liệu trang chủ.',
     });
   }
 };
@@ -388,21 +544,33 @@ exports.updateProduct = async (req, res) => {
     }
 
     const isOwner = product.seller?.toString() === req.user._id.toString();
-    if (!isOwner && req.user.role !== 'admin') {
+    const isAdmin = req.user.role === 'admin';
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền cập nhật sản phẩm này.',
       });
     }
 
-    const updates = pickUpdateFields(req.body);
+    const updates = pickUpdateFields(req.body, { isAdmin, allowStatus: isOwner });
+
+    const newPrice = updates.price !== undefined ? updates.price : product.price;
+    const newOriginalPrice = updates.originalPrice !== undefined ? updates.originalPrice : product.originalPrice;
+
+    if (newOriginalPrice && newPrice && newOriginalPrice > newPrice) {
+      updates.discountPercent = Math.round(((newOriginalPrice - newPrice) / newOriginalPrice) * 100);
+    } else if (newOriginalPrice && newPrice && newOriginalPrice <= newPrice) {
+      updates.discountPercent = 0;
+    }
+
     Object.assign(product, updates);
     await product.save();
 
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
     res.status(200).json({
       success: true,
       data: {
-        product: buildProductResponse(product),
+        product: buildProductResponse(product, baseUrl),
       },
     });
   } catch (error) {
@@ -480,7 +648,7 @@ exports.reserveProduct = async (req, res) => {
     }
 
     const existingOrder = await Order.findOne({
-      product: id,
+      'items.product': id,
       status: { $in: ['scheduling', 'pending'] },
     });
 
@@ -507,21 +675,29 @@ exports.reserveProduct = async (req, res) => {
       });
     }
 
-    const normalizedLocationId = normalizeLocationId(meetingLocationId || meetingSpot);
-    if ((meetingLocationId !== undefined || meetingSpot !== undefined) && !normalizedLocationId) {
+    const normalizedLocationId = normalizeLocationId(meetingLocationId);
+    const meetingLocationText = typeof meetingLocationId === 'string' ? meetingLocationId.trim() : '';
+    const normalizedSpot = typeof meetingSpot === 'string' ? meetingSpot.trim() : '';
+    const rawSpot = normalizedSpot || (normalizedLocationId ? '' : meetingLocationText);
+    const spotAsLocationId = normalizeLocationId(rawSpot);
+
+    if (!rawSpot && !normalizedLocationId) {
       return res.status(400).json({
         success: false,
-        message: 'Địa điểm giao dịch không hợp lệ.',
+        message: 'Vui lòng chọn hoặc nhập địa điểm giao dịch.',
       });
     }
+
+    const finalMeetingLocationId = normalizedLocationId || spotAsLocationId || undefined;
+    const finalMeetingSpot = rawSpot || undefined;
 
     let reservedProduct;
 
     try {
       reservedProduct = await Product.findOneAndUpdate(
         { _id: id, status: 'available' },
-        { status: 'reserved' },
-        { new: true }
+        { status: 'reserved', reservedBy: req.user._id },
+        { returnDocument: 'after' }
       );
 
       if (!reservedProduct) {
@@ -532,15 +708,23 @@ exports.reserveProduct = async (req, res) => {
       }
 
       const order = await Order.create({
-        product: id,
+        items: [
+          {
+            product: id,
+            quantity: 1,
+            price: product.price,
+          },
+        ],
+        totalPrice: product.price,
         buyer: req.user._id,
         seller: product.seller,
-        meetingLocationId: normalizedLocationId || undefined,
-        meetingSpot: normalizedLocationId || undefined,
+        meetingLocationId: finalMeetingLocationId,
+        meetingSpot: finalMeetingSpot,
         note,
         status: 'scheduling',
       });
 
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
       res.status(201).json({
         success: true,
         message: 'Đã giữ chỗ sản phẩm. Vui lòng chọn lịch hẹn.',
@@ -552,12 +736,14 @@ exports.reserveProduct = async (req, res) => {
             buyer: order.buyer,
             seller: order.seller,
           },
-          product: buildProductResponse(product),
+          product: buildProductResponse(reservedProduct, baseUrl, {
+            booking: buildBookingResponse(order),
+          }),
         },
       });
     } catch (error) {
       if (reservedProduct) {
-        await Product.findByIdAndUpdate(reservedProduct._id, { status: 'available' });
+        await Product.findByIdAndUpdate(reservedProduct._id, { status: 'available', reservedBy: null });
       }
 
       throw error;
@@ -567,6 +753,82 @@ exports.reserveProduct = async (req, res) => {
       success: false,
       message: error.message || 'Lỗi server khi giữ chỗ sản phẩm.',
     });
+  }
+};
+
+exports.rescheduleProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID sản phẩm không hợp lệ.' });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm.' });
+    }
+
+    if (product.seller?.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'Bạn không thể đổi lịch hẹn cho sản phẩm của chính mình.' });
+    }
+
+    if (product.status !== 'reserved') {
+      return res.status(409).json({ success: false, message: 'Sản phẩm chưa được đặt hẹn.' });
+    }
+
+    const order = await Order.findOne({
+      'items.product': id,
+      buyer: req.user._id,
+      status: { $in: ['scheduling', 'pending'] },
+    }).sort({ updatedAt: -1, createdAt: -1 });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch hẹn để đổi.' });
+    }
+
+    // ensure the authenticated user is the buyer
+    if (!order.buyer || order.buyer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền đổi lịch cho đơn hàng này.' });
+    }
+
+    const { meetingLocationId, meetingSpot, note } = req.body;
+
+    const normalizedLocationId = normalizeLocationId(meetingLocationId);
+    const meetingLocationText = typeof meetingLocationId === 'string' ? meetingLocationId.trim() : '';
+    const normalizedSpot = typeof meetingSpot === 'string' ? meetingSpot.trim() : '';
+    const rawSpot = normalizedSpot || (normalizedLocationId ? '' : meetingLocationText);
+    const spotAsLocationId = normalizeLocationId(rawSpot);
+
+    if (!rawSpot && !normalizedLocationId) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn hoặc nhập địa điểm giao dịch.' });
+    }
+
+    const finalMeetingLocationId = normalizedLocationId || spotAsLocationId || undefined;
+    const finalMeetingSpot = rawSpot || undefined;
+
+    order.meetingLocationId = finalMeetingLocationId;
+    order.meetingSpot = finalMeetingSpot;
+    if (typeof note === 'string') order.note = note.trim();
+
+    await order.save();
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return res.status(200).json({
+      success: true,
+      message: 'Đã cập nhật lịch hẹn.',
+      data: {
+        order: {
+          id: order._id,
+          status: order.status,
+          meetingLocationId: order.meetingLocationId,
+          meetingSpot: order.meetingSpot,
+          note: order.note,
+        },
+        product: buildProductResponse(product, baseUrl),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || 'Lỗi server khi đổi lịch hẹn.' });
   }
 };
 
@@ -659,10 +921,11 @@ exports.addProductImages = async (req, res) => {
     product.images = [...(product.images || []), ...images];
     await product.save();
 
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
     res.status(200).json({
       success: true,
       data: {
-        product: buildProductResponse(product),
+        product: buildProductResponse(product, baseUrl),
       },
     });
   } catch (error) {
