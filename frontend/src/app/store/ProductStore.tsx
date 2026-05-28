@@ -21,6 +21,7 @@ export interface Product {
   status?: string;
   reservedBy?: string | null;
   seller: {
+    id: string;
     name: string;
     avatar: string;
     rating: number;
