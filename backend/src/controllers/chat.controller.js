@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
+const Conversation = require('../models/Conversation');
 const User = require('../models/user.model');
 
 const buildMessageResponse = (message) => ({
@@ -11,6 +12,14 @@ const buildMessageResponse = (message) => ({
   readAt: message.readAt,
   createdAt: message.createdAt,
   updatedAt: message.updatedAt,
+});
+
+const buildConversationResponse = (conversation) => ({
+  id: conversation._id,
+  participants: conversation.participants,
+  lastMessage: conversation.lastMessage,
+  createdAt: conversation.createdAt,
+  updatedAt: conversation.updatedAt,
 });
 
 const normalizeContent = (value) => {
@@ -41,6 +50,75 @@ const parseLimit = (value, fallback = 20, max = 100) => {
 
 const ensureUserExists = async (userId) => {
   return await User.findById(userId).select('_id');
+};
+
+const normalizeUserId = (value) => {
+  if (!value) {
+    return '';
+  }
+
+  return String(value).trim();
+};
+
+exports.getOrCreateConversation = async (req, res) => {
+  try {
+    const currentUserId = req.user?._id ? String(req.user._id) : '';
+    const otherUserId = normalizeUserId(req.body?.sellerId || req.body?.userId);
+
+    if (!otherUserId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp ID người bán để bắt đầu trò chuyện.',
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(otherUserId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID người dùng không hợp lệ.',
+      });
+    }
+
+    if (otherUserId === currentUserId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bạn không thể tạo hội thoại với chính mình.',
+      });
+    }
+
+    const receiver = await ensureUserExists(otherUserId);
+    if (!receiver) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy người dùng cần liên hệ.',
+      });
+    }
+
+    const participantIds = [currentUserId, otherUserId].sort();
+    const participantsKey = participantIds.join('_');
+
+    let conversation = await Conversation.findOne({ participantsKey });
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: participantIds,
+        participantsKey,
+        createdBy: currentUserId,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        conversation: buildConversationResponse(conversation),
+        otherUserId,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi server khi tạo hội thoại.',
+    });
+  }
 };
 
 exports.sendMessage = async (req, res) => {

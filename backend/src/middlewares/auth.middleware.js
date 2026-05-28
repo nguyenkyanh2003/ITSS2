@@ -69,6 +69,32 @@ exports.protect = async (req, res, next) => {
   }
 };
 
+exports.optionalProtect = async (req, res, next) => {
+  try {
+    const token = getTokenFromHeader(req);
+
+    if (!token || !process.env.JWT_SECRET) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const currentUser = await User.findById(decoded.id).select('+password');
+
+    if (
+      currentUser &&
+      currentUser.status === 'active' &&
+      !currentUser.trustStats?.isBlacklisted &&
+      !currentUser.changedPasswordAfter(decoded.iat)
+    ) {
+      req.user = currentUser;
+    }
+
+    return next();
+  } catch (error) {
+    return next();
+  }
+};
+
 exports.restrictTo = (...roles) => (req, res, next) => {
   if (!req.user || !roles.includes(req.user.role)) {
     return res.status(403).json({
