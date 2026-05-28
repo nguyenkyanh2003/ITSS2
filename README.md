@@ -1,7 +1,5 @@
 # 🛒 HUST Marketplace - Nền Tảng Trao Đổi Đồ Cũ Sinh Viên
 
-![HUST Marketplace Banner](https://via.placeholder.com/1000x300?text=HUST+Marketplace)
-
 ## 📖 1. Giới thiệu dự án
 
 **HUST Marketplace** là một ứng dụng thương mại điện tử (E-commerce) theo mô hình C2C (Customer to Customer), được thiết kế tối ưu hóa dành riêng cho sinh viên trong môi trường đại học (đặc biệt là Đại học Bách Khoa). 
