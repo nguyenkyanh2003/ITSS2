@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useParams } from "react-router";
 import { ArrowLeft, Send } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
+import { getApiUrl } from "../../utils/api";
 
 interface LocationState {
   conversationId?: string;

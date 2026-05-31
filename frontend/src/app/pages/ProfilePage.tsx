@@ -7,6 +7,7 @@ import { useProducts } from "../store/ProductStore";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { LanguageToggle } from "../components/LanguageToggle";
 import { useNotification } from "../../context/NotificationContext";
+import { getApiUrl } from "../../utils/api";
 
 export function ProfilePage() {
   const { user, isAuthenticated, logout, updateUser } = useAuth();

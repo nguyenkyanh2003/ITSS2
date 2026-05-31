@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { ArrowLeft, MapPin, Clock, CreditCard, ShoppingBag } from "lucide-react";
 import { useNotification } from "../../context/NotificationContext";
+import { getApiUrl } from "../../utils/api";
 
 const CAMPUS_LOCATIONS = [
   { id: 'GATE_MAIN', name: 'Cổng chính' },
