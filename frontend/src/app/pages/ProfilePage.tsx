@@ -17,7 +17,7 @@ export function ProfilePage() {
   const errorTitle = "Lỗi";
   const successTitle = "Thành công";
   
-  const [activeTab, setActiveTab] = useState<"listings" | "orders">("listings");
+  const [activeTab, setActiveTab] = useState<"listings" | "purchases" | "sales">("listings");
   
   // States for Edit Profile Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -34,6 +34,128 @@ export function ProfilePage() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelReasonOther, setCancelReasonOther] = useState("");
   const [isCancellingOrder, setIsCancellingOrder] = useState(false);
+
+  // States for Review Modal
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewOrderId, setReviewOrderId] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  // Optional: keep track of reviewed orders locally to disable button
+  const [reviewedOrders, setReviewedOrders] = useState<Set<string>>(new Set());
+
+  const handleCompleteOrder = async (orderId: string) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`/api/orders/${orderId}/complete`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (data.success) {
+        const successMessage = activeTab === "sales" ? "Đã giao hàng thành công." : "Đã nhận hàng thành công.";
+        showNotification(successTitle, successMessage, "success");
+        if (loadOrders) loadOrders();
+      } else {
+        const errorMessage = activeTab === "sales" ? "Lỗi xác nhận đã giao hàng" : "Lỗi xác nhận đã nhận hàng";
+        showNotification(errorTitle, data.message || errorMessage, "error");
+      }
+    } catch (error: any) {
+      const errorMessage = activeTab === "sales" ? "Lỗi xác nhận đã giao hàng" : "Lỗi xác nhận đã nhận hàng";
+      showNotification(errorTitle, error.message || errorMessage, "error");
+    }
+  };
+
+  const handleConfirmOrder = async (orderId: string) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: 'pending' }) // Cập nhật trạng thái thành Đang giao (pending)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(successTitle, "Đã xác nhận đơn hàng.", "success");
+        if (loadOrders) loadOrders();
+      } else {
+        showNotification(errorTitle, data.message || "Lỗi xác nhận đơn", "error");
+      }
+    } catch (error: any) {
+      showNotification(errorTitle, error.message || "Lỗi xác nhận đơn", "error");
+    }
+  };
+
+  const openReviewModal = (orderId: string) => {
+    setReviewOrderId(orderId);
+    setReviewRating(5);
+    setReviewComment("");
+    setIsReviewModalOpen(true);
+  };
+
+  const closeReviewModal = () => {
+    setIsReviewModalOpen(false);
+    setReviewOrderId(null);
+    setReviewRating(5);
+    setReviewComment("");
+    setIsSubmittingReview(false);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewOrderId) return;
+    if (reviewRating < 1 || reviewRating > 5) {
+      showNotification(errorTitle, "Vui lòng chọn số sao từ 1 đến 5.", "error");
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showNotification(errorTitle, "Vui lòng đăng nhập lại để đánh giá.", "error");
+      logout();
+      return;
+    }
+
+    try {
+      setIsSubmittingReview(true);
+      const res = await fetch(`/api/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          orderId: reviewOrderId,
+          rating: reviewRating,
+          comment: reviewComment,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Không thể gửi đánh giá');
+      }
+
+      showNotification(successTitle, "Đánh giá thành công!", "success");
+      
+      // Add to reviewed set so we can disable the button
+      setReviewedOrders(prev => {
+        const newSet = new Set(prev);
+        newSet.add(reviewOrderId);
+        return newSet;
+      });
+      
+      closeReviewModal();
+    } catch (error: any) {
+      showNotification(errorTitle, error.message || "Không thể gửi đánh giá", "error");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   const cancelReasons = [
     "Thay đổi quyết định",
@@ -188,6 +310,8 @@ export function ProfilePage() {
     return ordersRaw.map((order) => {
       const sellerName = order?.seller?.fullName || "Người bán";
       const sellerId = toId(order?.seller) || null;
+      const buyerName = order?.buyer?.fullName || "Người mua";
+      const buyerId = toId(order?.buyer) || null;
       const statusInfo = mapOrderStatus(order.status);
 
       let items = [];
@@ -436,7 +560,18 @@ export function ProfilePage() {
     }
   }, [isAuthenticated, user, hasLoadedOrders, loadOrders]);
 
-  const filteredOrders = orderStatusTab === "all" ? mappedOrders : mappedOrders.filter(o => o.status === orderStatusTab);
+  const filteredOrders = useMemo(() => {
+    let base = mappedOrders;
+    if (activeTab === "purchases") {
+      base = base.filter(o => o.buyerId === user?.id);
+    } else if (activeTab === "sales") {
+      base = base.filter(o => o.sellerId === user?.id);
+    }
+    if (orderStatusTab !== "all") {
+      base = base.filter(o => o.status === orderStatusTab);
+    }
+    return base;
+  }, [mappedOrders, activeTab, orderStatusTab, user]);
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
@@ -540,15 +675,26 @@ export function ProfilePage() {
                   {t.myListings}
                 </button>
                 <button
-                  onClick={() => setActiveTab("orders")}
+                  onClick={() => { setActiveTab("purchases"); loadOrders(); }}
                   className={`flex-1 py-4 px-6 text-center font-medium flex items-center justify-center gap-2 transition-colors ${
-                    activeTab === "orders"
+                    activeTab === "purchases"
                       ? "text-[#FF5C00] border-b-2 border-[#FF5C00]"
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
                   <ShoppingBag className="w-5 h-5" />
-                  {t.myOrders}
+                  Đơn mua của tôi
+                </button>
+                <button
+                  onClick={() => { setActiveTab("sales"); loadOrders(); }}
+                  className={`flex-1 py-4 px-6 text-center font-medium flex items-center justify-center gap-2 transition-colors ${
+                    activeTab === "sales"
+                      ? "text-[#FF5C00] border-b-2 border-[#FF5C00]"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <Store className="w-5 h-5" />
+                  Đơn bán của tôi
                 </button>
               </div>
 
@@ -598,7 +744,7 @@ export function ProfilePage() {
                   </div>
                 )}
 
-                {activeTab === "orders" && (
+                {(activeTab === "purchases" || activeTab === "sales") && (
                   <div>
                     {/* Order Status Tabs */}
                     <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
@@ -651,7 +797,7 @@ export function ProfilePage() {
                             <div className="flex justify-between items-center p-4 border-b border-gray-100">
                               <div className="flex items-center gap-2 font-medium text-gray-900">
                                 <Store className="w-5 h-5 text-gray-500" />
-                                {order.sellerName}
+                                {activeTab === "purchases" ? order.sellerName : order.buyerName}
                               </div>
                               <div className="text-[#FF5C00] text-sm font-medium uppercase">
                                 {order.statusText}
@@ -687,23 +833,69 @@ export function ProfilePage() {
                               <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                                 {order.status === "delivered" ? (
                                   <>
-                                    <button className="flex-1 sm:flex-none px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors">
-                                      Đánh giá
-                                    </button>
-                                    <button className="flex-1 sm:flex-none px-6 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm">
-                                      Mua lại
-                                    </button>
+                                    {activeTab === "purchases" && (
+                                      <>
+                                        <button 
+                                          onClick={() => openReviewModal(order.id)}
+                                          disabled={reviewedOrders.has(order.id)}
+                                          className="flex-1 sm:flex-none px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                          {reviewedOrders.has(order.id) ? "Đã đánh giá" : "Đánh giá"}
+                                        </button>
+                                        <button className="flex-1 sm:flex-none px-6 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm">
+                                          Mua lại
+                                        </button>
+                                      </>
+                                    )}
                                   </>
                                 ) : order.status === "pending" ? (
-                                  <button
-                                    onClick={() => openCancelModal(order.id)}
-                                    className="w-full sm:w-auto px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors"
-                                  >
-                                    Hủy đơn
-                                  </button>
+                                  <>
+                                    {activeTab === "purchases" && (
+                                      <button
+                                        onClick={() => openCancelModal(order.id)}
+                                        className="w-full sm:w-auto px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors"
+                                      >
+                                        Hủy đơn
+                                      </button>
+                                    )}
+                                    {activeTab === "sales" && (
+                                      <>
+                                        <button
+                                          onClick={() => openCancelModal(order.id)}
+                                          className="w-full sm:w-auto px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors"
+                                        >
+                                          Từ chối đơn
+                                        </button>
+                                        <button
+                                          onClick={() => handleConfirmOrder(order.id)}
+                                          className="w-full sm:w-auto px-6 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
+                                        >
+                                          Xác nhận đơn
+                                        </button>
+                                      </>
+                                    )}
+                                  </>
+                                ) : order.status === "shipping" ? (
+                                  <>
+                                    {activeTab === "purchases" ? (
+                                      <button
+                                        onClick={() => handleCompleteOrder(order.id)}
+                                        className="w-full sm:w-auto px-6 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
+                                      >
+                                        Đã nhận hàng
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => handleCompleteOrder(order.id)}
+                                        className="w-full sm:w-auto px-6 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
+                                      >
+                                        Đã giao hàng
+                                      </button>
+                                    )}
+                                  </>
                                 ) : order.status === "cancelled" ? (
                                   <button
-                                    onClick={() => handleContactSeller(order.sellerId, order.sellerName)}
+                                    onClick={() => handleContactSeller(activeTab === "purchases" ? order.sellerId : order.buyerId, activeTab === "purchases" ? order.sellerName : order.buyerName)}
                                     className="w-full sm:w-auto px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors"
                                   >
                                     Liên hệ
@@ -890,6 +1082,86 @@ export function ProfilePage() {
                 disabled={!cancelReason || (cancelReason === "Lý do khác" && !cancelReasonOther.trim()) || isCancellingOrder}
               >
                 {isCancellingOrder ? "Đang hủy..." : "Xác nhận hủy"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Đánh giá */}
+      {isReviewModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900">Đánh giá Người bán</h3>
+              <button
+                onClick={closeReviewModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Rating Stars */}
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Chất lượng sản phẩm & Dịch vụ</span>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="focus:outline-none transition-transform hover:scale-110"
+                    >
+                      <Star
+                        className={`w-10 h-10 ${
+                          star <= reviewRating
+                            ? "text-yellow-400 fill-current"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <span className="text-sm text-gray-500">
+                  {reviewRating === 1 && "Tệ"}
+                  {reviewRating === 2 && "Không hài lòng"}
+                  {reviewRating === 3 && "Bình thường"}
+                  {reviewRating === 4 && "Hài lòng"}
+                  {reviewRating === 5 && "Tuyệt vời"}
+                </span>
+              </div>
+
+              {/* Comment Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bình luận (Tùy chọn)
+                </label>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Chia sẻ trải nghiệm của bạn về người bán và sản phẩm..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+              <button
+                onClick={closeReviewModal}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-colors"
+                disabled={isSubmittingReview}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSubmitReview}
+                disabled={isSubmittingReview}
+                className="px-6 py-2 bg-[#FF5C00] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm disabled:opacity-60"
+              >
+                {isSubmittingReview ? "Đang gửi..." : "Gửi đánh giá"}
               </button>
             </div>
           </div>

@@ -467,10 +467,10 @@ const handleConfirmTime = async (req, res) => {
     });
   }
 
-  if (order.buyer?.toString() !== req.user._id.toString()) {
+  if (!ensureParticipant(order, req.user._id.toString())) {
     return res.status(403).json({
       success: false,
-      message: 'Chỉ người mua mới được chốt khung giờ.',
+      message: 'Chỉ người mua hoặc người bán mới được chốt khung giờ.',
     });
   }
 
@@ -721,5 +721,36 @@ exports.cancelOrder = async (req, res) => {
     if (session && !sessionEnded) {
       session.endSession();
     }
+  }
+};
+
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID đơn hàng không hợp lệ.' });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng.' });
+    }
+
+    if (order.seller.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Chỉ người bán mới được cập nhật trạng thái đơn hàng.' });
+    }
+
+    order.status = status;
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Cập nhật trạng thái đơn hàng thành công.',
+      data: { order: buildOrderResponse(order) }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || 'Lỗi server khi cập nhật trạng thái.' });
   }
 };

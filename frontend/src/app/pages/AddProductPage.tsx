@@ -60,6 +60,7 @@ export function AddProductPage() {
   const [timeSlot3Time, setTimeSlot3Time] = useState("");
 
   const [selectedSpots, setSelectedSpots] = useState<string[]>([]);
+  const [customSpot, setCustomSpot] = useState("");
 
   const toggleSpot = (spot: string) => {
     setSelectedSpots((prev) =>
@@ -93,7 +94,12 @@ export function AddProductPage() {
       return;
     }
 
-    if (selectedSpots.length === 0) {
+    const finalSpots = [...selectedSpots];
+    if (customSpot.trim() && !finalSpots.includes(customSpot.trim())) {
+      finalSpots.push(customSpot.trim());
+    }
+
+    if (finalSpots.length === 0) {
       showNotification(errorTitle, t.errSelectSpot, "error");
       return;
     }
@@ -114,7 +120,7 @@ export function AddProductPage() {
       form.append('productStatus', condition === 'Mới' ? 'new' : 'used');
       form.append('category', category);
       form.append('location', JSON.stringify({ campusArea: CAMPUS_SPOTS[0] }));
-      form.append('meetingSpots', JSON.stringify(selectedSpots));
+      form.append('meetingSpots', JSON.stringify(finalSpots));
       form.append('availableTimeSlots', JSON.stringify([
         { note: `${timeSlot1Day} ${timeSlot1Time}`.trim() || "", day: timeSlot1Day, time: timeSlot1Time },
         { note: `${timeSlot2Day} ${timeSlot2Time}`.trim() || "", day: timeSlot2Day, time: timeSlot2Time },
@@ -160,7 +166,7 @@ export function AddProductPage() {
         { day: timeSlot2Day, time: timeSlot2Time },
         { day: timeSlot3Day, time: timeSlot3Time },
       ],
-      preferredSpots: selectedSpots,
+      preferredSpots: finalSpots,
     };
 
     try {
@@ -397,7 +403,7 @@ export function AddProductPage() {
               <h3 className="font-semibold text-lg text-gray-900 mb-4">
                 {t.preferredSpotsTitle} <span className="text-red-500">*</span>
               </h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 mb-4">
                 {CAMPUS_SPOTS.map((spot) => (
                   <label
                     key={spot}
@@ -416,6 +422,15 @@ export function AddProductPage() {
                     <span className="ml-3 text-sm">{spot}</span>
                   </label>
                 ))}
+              </div>
+              <div className="mt-2">
+                <input
+                  type="text"
+                  value={customSpot}
+                  onChange={(e) => setCustomSpot(e.target.value)}
+                  placeholder="Hoặc nhập địa điểm khác..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                />
               </div>
             </div>
 
