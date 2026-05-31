@@ -12,5 +12,6 @@ router.patch('/:id/confirm-time', protect, orderController.confirmTime);
 router.patch('/:id/schedule', protect, orderController.scheduleOrder);
 router.patch('/:id/complete', protect, orderController.completeOrder);
 router.patch('/:id/cancel', protect, orderController.cancelOrder);
+router.patch('/:id/status', protect, orderController.updateOrderStatus);
 
 module.exports = router;

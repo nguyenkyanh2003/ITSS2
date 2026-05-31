@@ -317,9 +317,7 @@ exports.createProduct = async (req, res) => {
     res.status(201).json({
       success: true,
       data: {
-        product: buildProductResponse(product, baseUrl, {
-          booking: buildBookingResponse(order),
-        }),
+        product: buildProductResponse(product, baseUrl),
       },
     });
   } catch (error) {

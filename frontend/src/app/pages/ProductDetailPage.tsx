@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router";
-import { ArrowLeft, MapPin, Clock, CheckCircle, Phone } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, CheckCircle, Phone, Upload } from "lucide-react";
 import { useProducts, Product } from "../store/ProductStore";
 import { BookingModal } from "../components/BookingModal";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -27,39 +27,59 @@ export function ProductDetailPage() {
   
   const [editFormData, setEditFormData] = useState({
     title: '',
+    description: '',
     price: 0,
     condition: '',
     image: '',
+    availableTimeSlots: [] as {day: string, time: string}[],
   });
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
   const handleUpdateProduct = async () => {
     if (!product) return;
     const token = localStorage.getItem('token');
     try {
+      const formData = new FormData();
+      formData.append('title', editFormData.title);
+      if (editFormData.description) {
+        formData.append('description', editFormData.description);
+      }
+      formData.append('price', String(editFormData.price));
+      formData.append('productStatus', editFormData.condition === 'Mới' ? 'new' : (editFormData.condition === 'Khác' ? 'other' : 'used'));
+      
+      if (editFormData.availableTimeSlots && editFormData.availableTimeSlots.length > 0) {
+        formData.append('availableTimeSlots', JSON.stringify(editFormData.availableTimeSlots.map(slot => ({
+          ...slot,
+          note: `${slot.day} ${slot.time}`.trim()
+        }))));
+      }
+
+      if (editImageFile) {
+        formData.append('images', editImageFile);
+      }
+
       const res = await fetch(`/api/products/${product.id}`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          title: editFormData.title,
-          price: editFormData.price,
-          productStatus: editFormData.condition === 'Mới' ? 'new' : (editFormData.condition === 'Khác' ? 'other' : 'used'),
-          images: editFormData.image ? [{ url: editFormData.image }] : [],
-        }),
+        body: formData,
       });
+      
       const data = await res.json();
       if (data.success) {
         showNotification(successTitle, "Cập nhật sản phẩm thành công", "success");
+        const updatedProductInfo = data.data?.product || {};
         const updates = {
           title: editFormData.title,
+          description: editFormData.description,
           price: editFormData.price,
           condition: editFormData.condition,
-          image: editFormData.image,
+          availableTimeSlots: editFormData.availableTimeSlots,
+          image: updatedProductInfo.image || editFormData.image,
         };
         updateProduct(product.id, updates);
-        setProduct({ ...product, ...updates });
+        setProduct({ ...product, ...updates, image: updates.image });
         setIsEditModalOpen(false);
       } else {
         showNotification(errorTitle, data.message || "Lỗi cập nhật sản phẩm", "error");
@@ -347,10 +367,13 @@ export function ProductDetailPage() {
                     onClick={() => {
                       setEditFormData({
                         title: product.title,
+                        description: product.description || '',
                         price: product.price,
                         condition: product.condition,
                         image: product.image,
+                        availableTimeSlots: product.availableTimeSlots ? [...product.availableTimeSlots] : [],
                       });
+                      setEditImageFile(null);
                       setIsEditModalOpen(true);
                     }}
                     className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
@@ -494,49 +517,144 @@ export function ProductDetailPage() {
 
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Sửa sản phẩm</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm</label>
                 <input
                   type="text"
-                  className="w-full border rounded p-2"
+                  className="w-full border rounded p-2 focus:ring-2 focus:ring-[#FF5C00] outline-none"
                   value={editFormData.title}
                   onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
                 />
               </div>
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Giá</label>
-                <input
-                  type="number"
-                  className="w-full border rounded p-2"
-                  value={editFormData.price}
-                  onChange={(e) => setEditFormData({ ...editFormData, price: Number(e.target.value) })}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                <textarea
+                  className="w-full border rounded p-2 focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                  rows={4}
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tình trạng</label>
-                <select
-                  className="w-full border rounded p-2"
-                  value={editFormData.condition}
-                  onChange={(e) => setEditFormData({ ...editFormData, condition: e.target.value })}
-                >
-                  <option value="Mới">Mới</option>
-                  <option value="Đã qua sử dụng">Đã qua sử dụng</option>
-                  <option value="Khác">Khác</option>
-                </select>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Giá</label>
+                  <input
+                    type="number"
+                    className="w-full border rounded p-2 focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                    value={editFormData.price}
+                    onChange={(e) => setEditFormData({ ...editFormData, price: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tình trạng</label>
+                  <select
+                    className="w-full border rounded p-2 focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                    value={editFormData.condition}
+                    onChange={(e) => setEditFormData({ ...editFormData, condition: e.target.value })}
+                  >
+                    <option value="Mới">Mới</option>
+                    <option value="Đã qua sử dụng">Đã qua sử dụng</option>
+                    <option value="Khác">Khác</option>
+                  </select>
+                </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh (URL)</label>
-                <input
-                  type="text"
-                  className="w-full border rounded p-2"
-                  value={editFormData.image}
-                  onChange={(e) => setEditFormData({ ...editFormData, image: e.target.value })}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Khung giờ có thể gặp</label>
+                <div className="space-y-2">
+                  {editFormData.availableTimeSlots.map((slot, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Thứ (VD: Thứ 2, CN...)"
+                        className="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                        value={slot.day}
+                        onChange={(e) => {
+                          const newSlots = [...editFormData.availableTimeSlots];
+                          newSlots[index].day = e.target.value;
+                          setEditFormData({ ...editFormData, availableTimeSlots: newSlots });
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Giờ (VD: 09:00 - 11:00)"
+                        className="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                        value={slot.time}
+                        onChange={(e) => {
+                          const newSlots = [...editFormData.availableTimeSlots];
+                          newSlots[index].time = e.target.value;
+                          setEditFormData({ ...editFormData, availableTimeSlots: newSlots });
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          const newSlots = editFormData.availableTimeSlots.filter((_, i) => i !== index);
+                          setEditFormData({ ...editFormData, availableTimeSlots: newSlots });
+                        }}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded"
+                        title="Xóa khung giờ"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setEditFormData({
+                        ...editFormData,
+                        availableTimeSlots: [...editFormData.availableTimeSlots, { day: '', time: '' }]
+                      });
+                    }}
+                    className="text-sm text-[#FF5C00] hover:underline"
+                  >
+                    + Thêm khung giờ
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2 justify-end mt-6">
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh mới (Tùy chọn)</label>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('edit-product-image')?.click()}
+                    className="flex items-center justify-center w-12 h-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#FF5C00] hover:text-[#FF5C00] text-gray-500 transition-colors"
+                  >
+                    <Upload className="w-5 h-5" />
+                  </button>
+                  <input
+                    id="edit-product-image"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setEditImageFile(e.target.files[0]);
+                      } else {
+                        setEditImageFile(null);
+                      }
+                    }}
+                  />
+                  {editImageFile && (
+                    <span className="text-sm text-gray-600 truncate max-w-[200px]">
+                      {editImageFile.name}
+                    </span>
+                  )}
+                </div>
+                {!editImageFile && editFormData.image && (
+                  <div className="mt-2 text-sm text-gray-500">
+                    <p>Ảnh hiện tại:</p>
+                    <img src={editFormData.image} alt="Current" className="h-20 object-contain rounded mt-1 border" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 justify-end mt-6 pt-4 border-t">
                 <button
                   onClick={() => setIsEditModalOpen(false)}
                   className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50"
