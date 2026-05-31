@@ -127,6 +127,10 @@ const buildQueryString = (params?: ProductQueryParams) => {
 };
 
 const getProductFetchErrorMessage = (error: unknown) => {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return "API phản hồi quá lâu. Vui lòng kiểm tra backend hoặc thử lại sau.";
+  }
+
   if (error instanceof Error && error.message) {
     return error.message;
   }
@@ -203,7 +207,14 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     try {
       const queryString = buildQueryString(params);
       const url = queryString ? getApiUrl(`/api/products?${queryString}`) : getApiUrl('/api/products');
-      const res = await fetch(url);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      let res: Response;
+      try {
+        res = await fetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
       const data = await res.json();
 
       if (!res.ok || !data.success) {
