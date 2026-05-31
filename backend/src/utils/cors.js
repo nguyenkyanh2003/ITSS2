@@ -1,25 +1,22 @@
 const buildCorsOptions = () => {
-  const allowedMainDomains = [
-    'https://itss-2-ten.vercel.app'
+  const allowedOrigins = [
+    'https://itss-2-ten.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173'
   ];
 
   return {
     origin(origin, callback) {
-      // Cho phép request không có origin (ví dụ: curl, postman, mobile app...)
       if (!origin) {
         return callback(null, true);
       }
 
-      const isAllowedMain = allowedMainDomains.includes(origin);
-      const isLocalhost = origin.startsWith('http://localhost:');
-      const isVercelPreview = origin.endsWith('.vercel.app');
-
-      if (isAllowedMain || isLocalhost || isVercelPreview) {
+      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
         return callback(null, true);
       }
 
       console.warn(`[CORS Blocked] Origin: ${origin}`);
-      return callback(new Error(`CORS blocked origin: ${origin}`));
+      return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
   };
