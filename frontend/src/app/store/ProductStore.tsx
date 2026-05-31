@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from "react";
+import { getApiUrl } from "../../utils/api";
 
 export interface TimeSlot {
   day: string;
@@ -201,7 +202,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
     try {
       const queryString = buildQueryString(params);
-      const url = queryString ? `/api/products?${queryString}` : '/api/products';
+      const url = queryString ? getApiUrl(`/api/products?${queryString}`) : getApiUrl('/api/products');
       const res = await fetch(url);
       const data = await res.json();
 

@@ -9,6 +9,7 @@ import { LanguageToggle } from "../components/LanguageToggle";
 import { useAuth } from "../context/AuthContext";
 import Swal from "sweetalert2";
 import { useNotification } from "../../context/NotificationContext";
+import { getApiUrl } from "../../utils/api";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -168,7 +169,7 @@ export function ProductDetailPage() {
     const isReschedule = (product.status === 'reserved' && user?.id && product.reservedBy && user.id === product.reservedBy) || Boolean(product.booking);
 
     try {
-      const res = await fetch(`/api/products/${product.id}/${isReschedule ? "reschedule" : "reserve"}`, {
+      const res = await fetch(getApiUrl(`/api/products/${product.id}/${isReschedule ? "reschedule" : "reserve"}`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

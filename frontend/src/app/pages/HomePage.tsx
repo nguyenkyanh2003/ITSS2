@@ -7,6 +7,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { LanguageToggle } from "../components/LanguageToggle";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
+import { getApiUrl } from "../../utils/api";
 
 type SuggestionItem = {
   type: "title" | "category";
@@ -118,7 +119,7 @@ export function HomePage() {
       try {
         setIsSuggesting(true);
         const res = await fetch(
-          `/api/products/suggestions?keyword=${encodeURIComponent(keyword)}&limit=10`,
+          getApiUrl(`/api/products/suggestions?keyword=${encodeURIComponent(keyword)}&limit=10`),
           { signal: controller.signal }
         );
         const data = await res.json();
