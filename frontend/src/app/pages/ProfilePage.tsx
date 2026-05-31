@@ -47,7 +47,7 @@ export function ProfilePage() {
   const handleCompleteOrder = async (orderId: string) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`/api/orders/${orderId}/complete`, {
+      const res = await fetch(getApiUrl(`/api/orders/${orderId}/complete`), {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -71,7 +71,7 @@ export function ProfilePage() {
   const handleConfirmOrder = async (orderId: string) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
+      const res = await fetch(getApiUrl(`/api/orders/${orderId}/status`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ export function ProfilePage() {
 
     try {
       setIsSubmittingReview(true);
-      const res = await fetch(`/api/reviews`, {
+      const res = await fetch(getApiUrl(`/api/reviews`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -229,7 +229,7 @@ export function ProfilePage() {
     let latestUser: any | null = null;
     try {
 
-      const resProfile = await fetch("/api/users/me", {
+      const resProfile = await fetch(getApiUrl("/api/users/me"), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -252,7 +252,7 @@ export function ProfilePage() {
         const formData = new FormData();
         formData.append("image", editAvatarFile);
 
-        const resAvatar = await fetch("/api/users/me/avatar", {
+        const resAvatar = await fetch(getApiUrl("/api/users/me/avatar"), {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -407,7 +407,7 @@ export function ProfilePage() {
         return;
       }
 
-      const res = await fetch('/api/orders/me', {
+      const res = await fetch(getApiUrl('/api/orders/me'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -448,7 +448,7 @@ export function ProfilePage() {
     }
 
     try {
-      const res = await fetch('/api/chats/conversations', {
+      const res = await fetch(getApiUrl('/api/chats/conversations'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -508,7 +508,7 @@ export function ProfilePage() {
 
     try {
       setIsCancellingOrder(true);
-      const res = await fetch(`/api/orders/${cancelOrderId}/cancel`, {
+      const res = await fetch(getApiUrl(`/api/orders/${cancelOrderId}/cancel`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

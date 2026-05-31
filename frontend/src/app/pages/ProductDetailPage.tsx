@@ -58,7 +58,7 @@ export function ProductDetailPage() {
         formData.append('images', editImageFile);
       }
 
-      const res = await fetch(`/api/products/${product.id}`, {
+      const res = await fetch(getApiUrl(`/api/products/${product.id}`), {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -394,7 +394,7 @@ export function ProductDetailPage() {
                       }).then(async (result) => {
                         if (result.isConfirmed) {
                           try {
-                            const res = await fetch(`/api/products/${product.id}`, {
+                            const res = await fetch(getApiUrl(`/api/products/${product.id}`), {
                               method: 'DELETE',
                               headers: {
                                 'Authorization': `Bearer ${localStorage.getItem('token')}`,

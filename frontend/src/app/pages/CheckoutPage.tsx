@@ -76,7 +76,7 @@ export function CheckoutPage() {
         note
       };
 
-      const res = await fetch("/api/orders", {
+      const res = await fetch(getApiUrl("/api/orders"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

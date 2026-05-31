@@ -244,7 +244,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     // Support FormData for multipart uploads (images/video) or plain JSON payload
     let res;
     if (product instanceof FormData) {
-      res = await fetch('/api/products', {
+      res = await fetch(getApiUrl('/api/products'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -286,7 +286,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         availableTimeSlots: normalizedSlots,
       };
 
-      res = await fetch('/api/products', {
+      res = await fetch(getApiUrl('/api/products'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -325,7 +325,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         const timeout = setTimeout(() => controller.abort(), 8000);
 
         try {
-          const res = await fetch(`/api/products/${id}`, {
+          const res = await fetch(getApiUrl(`/api/products/${id}`), {
             headers: { Authorization: `Bearer ${token}` },
             signal: controller.signal,
           });
@@ -362,7 +362,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('token');
       const headers: Record<string,string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(`/api/products/${id}`, { headers, signal: controller.signal });
+      const res = await fetch(getApiUrl(`/api/products/${id}`), { headers, signal: controller.signal });
       const data = await res.json();
       console.debug('[ProductStore] fetch result', { ok: res.ok, status: res.status });
 

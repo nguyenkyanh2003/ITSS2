@@ -38,7 +38,7 @@ export function ChatPage() {
     const loadMessages = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/chats/with/${userId}?limit=50`, {
+        const res = await fetch(getApiUrl(`/api/chats/with/${userId}?limit=50`), {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -67,7 +67,7 @@ export function ChatPage() {
     if (!content) return;
 
     try {
-      const res = await fetch(`/api/chats/with/${userId}`, {
+      const res = await fetch(getApiUrl(`/api/chats/with/${userId}`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
