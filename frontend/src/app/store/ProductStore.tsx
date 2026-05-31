@@ -128,7 +128,7 @@ const buildQueryString = (params?: ProductQueryParams) => {
 
 const getProductFetchErrorMessage = (error: unknown) => {
   if (error instanceof DOMException && error.name === 'AbortError') {
-    return "API phản hồi quá lâu. Vui lòng kiểm tra backend hoặc thử lại sau.";
+    return "Backend đang khởi động quá lâu. Vui lòng thử lại sau vài giây.";
   }
 
   if (error instanceof Error && error.message) {
@@ -208,7 +208,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       const queryString = buildQueryString(params);
       const url = queryString ? getApiUrl(`/api/products?${queryString}`) : getApiUrl('/api/products');
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+      const timeout = setTimeout(() => controller.abort(), 70000);
       let res: Response;
       try {
         res = await fetch(url, { signal: controller.signal });
