@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { getApiUrl } from "../../utils/api";
+import { getApiUrl, getAssetUrl } from "../../utils/api";
 
 interface User {
   id: string;
@@ -22,11 +22,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const normalizeAvatarUrl = (value?: string | null) => {
-  if (!value) return "";
-  const trimmed = String(value).trim();
-  if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("/")) return trimmed;
-  return `/${trimmed}`;
+  return getAssetUrl(value);
 };
 
 const buildUserState = (rawUser: any, fallbackPhone?: string) => ({

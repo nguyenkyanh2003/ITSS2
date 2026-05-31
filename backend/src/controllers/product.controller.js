@@ -4,6 +4,8 @@ const Product = require('../models/product.model');
 const User = require('../models/user.model');
 const Order = require('../models/Order');
 const { CAMPUS_LOCATION_IDS } = require('../constants/locations');
+const { buildRelativeFileUrl, getPublicBaseUrl, normalizeMediaUrl } = require('../utils/media');
+const { uploadToCloudinaryIfConfigured } = require('../utils/cloudinaryUpload');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -106,17 +108,6 @@ const buildSellerResponse = (seller, baseUrl = null) => {
   };
 };
 
-const normalizeMediaUrl = (url, baseUrl) => {
-  if (!url) return null;
-  const str = String(url).trim();
-  if (!str) return null;
-  if (/^https?:\/\//i.test(str) || /^\/\//.test(str)) return str;
-  if (str.startsWith('/')) {
-    return baseUrl ? `${baseUrl}${str}` : str;
-  }
-  return str;
-};
-
 const getIdString = (value) => {
   if (!value) return null;
   if (value._id) return value._id.toString();
@@ -133,6 +124,28 @@ const buildBookingResponse = (order) => {
   return {
     time,
     spot: order.meetingSpot || order.meetingLocationId || '',
+  };
+};
+
+const getImageUrl = (image) => {
+  if (!image) return null;
+  if (typeof image === 'string') return image;
+  return image.url || null;
+};
+
+const buildImageResponse = (image, baseUrl) => {
+  if (!image) return image;
+  if (typeof image === 'string') {
+    return {
+      url: normalizeMediaUrl(image, baseUrl),
+      alt: 'product-image',
+    };
+  }
+
+  const leanImg = image.toObject ? image.toObject() : image;
+  return {
+    ...leanImg,
+    url: normalizeMediaUrl(getImageUrl(leanImg), baseUrl),
   };
 };
 
@@ -157,17 +170,10 @@ const buildProductResponse = (product, baseUrl = null, options = {}) => ({
   availableTimeSlots: product.availableTimeSlots,
   reservedBy: options.reservedBy || getIdString(product.reservedBy),
   booking: options.booking,
-  images: product.images,
   images: Array.isArray(product.images)
-    ? product.images.map((img) => {
-        const leanImg = img.toObject ? img.toObject() : img;
-        return {
-          ...leanImg,
-          url: normalizeMediaUrl(leanImg.url || leanImg, baseUrl),
-        };
-      })
+    ? product.images.map((img) => buildImageResponse(img, baseUrl))
     : product.images,
-  image: normalizeMediaUrl((product.images && product.images.length) ? product.images[0].url : null, baseUrl),
+  image: normalizeMediaUrl((product.images && product.images.length) ? getImageUrl(product.images[0]) : null, baseUrl),
   // normalize video url too
   videoUrl: normalizeMediaUrl(product.videoUrl, baseUrl) || null,
   seller: buildSellerResponse(product.seller, baseUrl),
@@ -217,8 +223,7 @@ const resolveProductStatusParam = (query) =>
 
 const buildImageUrl = (req, filePath) => {
   const rootDir = path.join(__dirname, '..', '..');
-  const relativePath = path.relative(rootDir, filePath).replace(/\\/g, '/');
-  return `${req.protocol}://${req.get('host')}/${relativePath}`;
+  return buildRelativeFileUrl(rootDir, filePath);
 };
 
 exports.createProduct = async (req, res) => {
@@ -281,14 +286,21 @@ exports.createProduct = async (req, res) => {
       uploadedFiles = Object.values(req.files).flat();
     }
 
-    const uploadedImages = uploadedFiles
+    const uploadedImageFiles = uploadedFiles
       .filter((f) => f && f.fieldname === 'images')
-      .map((file) => ({
-        url: buildImageUrl(req, file.path),
-        alt: file.originalname || 'product-image',
-      }));
+    const uploadedImages = await Promise.all(
+      uploadedImageFiles.map(async (file) => {
+        const cloudinaryFile = await uploadToCloudinaryIfConfigured(file, 'husttrade/products');
+        return {
+          url: cloudinaryFile?.url || buildImageUrl(req, file.path),
+          publicId: cloudinaryFile?.publicId,
+          alt: file.originalname || 'product-image',
+        };
+      })
+    );
 
     const videoFile = uploadedFiles.find((f) => f && f.fieldname === 'video');
+    const cloudinaryVideo = await uploadToCloudinaryIfConfigured(videoFile, 'husttrade/products/videos');
     const finalImages = [...baseImages, ...uploadedImages];
 
     const product = await Product.create({
@@ -309,11 +321,11 @@ exports.createProduct = async (req, res) => {
       meetingSpots: normalizedMeetingSpots,
       availableTimeSlots: normalizedAvailableTimeSlots,
       images: finalImages,
-      videoUrl: videoFile ? buildImageUrl(req, videoFile.path) : videoUrl,
+      videoUrl: cloudinaryVideo?.url || (videoFile ? buildImageUrl(req, videoFile.path) : videoUrl),
       seller: req.user._id,
     });
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getPublicBaseUrl(req);
     res.status(201).json({
       success: true,
       data: {
@@ -416,7 +428,7 @@ exports.getProducts = async (req, res) => {
       Product.countDocuments(filter),
     ]);
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getPublicBaseUrl(req);
     res.status(200).json({
       success: true,
       pagination: {
@@ -458,7 +470,7 @@ exports.getProductById = async (req, res) => {
       });
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getPublicBaseUrl(req);
     let activeOrder = null;
 
     if (req.user && product.status === 'reserved') {
@@ -506,7 +518,7 @@ exports.getHomeFeed = async (req, res) => {
         .limit(6),
     ]);
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getPublicBaseUrl(req);
     res.status(200).json({
       success: true,
       data: {
@@ -564,7 +576,7 @@ exports.updateProduct = async (req, res) => {
     Object.assign(product, updates);
     await product.save();
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getPublicBaseUrl(req);
     res.status(200).json({
       success: true,
       data: {
@@ -722,7 +734,7 @@ exports.reserveProduct = async (req, res) => {
         status: 'scheduling',
       });
 
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const baseUrl = getPublicBaseUrl(req);
       res.status(201).json({
         success: true,
         message: 'Đã giữ chỗ sản phẩm. Vui lòng chọn lịch hẹn.',
@@ -810,7 +822,7 @@ exports.rescheduleProduct = async (req, res) => {
 
     await order.save();
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getPublicBaseUrl(req);
     return res.status(200).json({
       success: true,
       message: 'Đã cập nhật lịch hẹn.',
@@ -911,15 +923,21 @@ exports.addProductImages = async (req, res) => {
       });
     }
 
-    const images = req.files.map((file) => ({
-      url: buildImageUrl(req, file.path),
-      alt: file.originalname || 'product-image',
-    }));
+    const images = await Promise.all(
+      req.files.map(async (file) => {
+        const cloudinaryFile = await uploadToCloudinaryIfConfigured(file, 'husttrade/products');
+        return {
+          url: cloudinaryFile?.url || buildImageUrl(req, file.path),
+          publicId: cloudinaryFile?.publicId,
+          alt: file.originalname || 'product-image',
+        };
+      })
+    );
 
     product.images = [...(product.images || []), ...images];
     await product.save();
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getPublicBaseUrl(req);
     res.status(200).json({
       success: true,
       data: {

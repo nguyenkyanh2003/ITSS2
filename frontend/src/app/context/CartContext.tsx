@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { getAssetUrl } from "../../utils/api";
 
 export interface CartItem {
   productId: string;
@@ -28,7 +29,10 @@ const CART_STORAGE_KEY = "shopping_cart";
 const loadCartFromStorage = (): CartItem[] => {
   try {
     const stored = localStorage.getItem(CART_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed)
+      ? parsed.map((item) => ({ ...item, image: getAssetUrl(item.image) }))
+      : [];
   } catch (error) {
     console.error("Failed to load cart from storage:", error);
     return [];

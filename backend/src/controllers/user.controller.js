@@ -1,12 +1,19 @@
 const mongoose = require('mongoose');
 const User = require('../models/user.model');
+const { getPublicBaseUrl, normalizeMediaUrl } = require('../utils/media');
+const { uploadToCloudinaryIfConfigured } = require('../utils/cloudinaryUpload');
 
-const buildUserResponse = (user, viewer) => {
+const buildUserResponse = (user, viewer, baseUrl = null) => {
   const canSeeContact = Boolean(
     viewer && (viewer.role === 'admin' || viewer._id?.toString() === user._id.toString())
   );
   const showEmail = user.contactPreferences?.showEmail || canSeeContact;
   const showPhone = canSeeContact;
+  const profile = user.profile?.toObject ? user.profile.toObject() : { ...(user.profile || {}) };
+
+  if (profile.avatarUrl) {
+    profile.avatarUrl = normalizeMediaUrl(profile.avatarUrl, baseUrl);
+  }
 
   const response = {
     id: user._id,
@@ -14,7 +21,7 @@ const buildUserResponse = (user, viewer) => {
     email: showEmail ? user.email : undefined,
     phoneNumber: showPhone ? user.phoneNumber : undefined,
     isVerified: user.isVerified,
-    profile: user.profile,
+    profile,
     student: user.student,
     location: user.location,
     contactPreferences: user.contactPreferences,
@@ -71,6 +78,7 @@ const pickUpdateFields = (payload) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
+    const baseUrl = getPublicBaseUrl(req);
     const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Number.parseInt(req.query.limit, 10) || 20, 100);
     const skip = (page - 1) * limit;
@@ -100,7 +108,7 @@ exports.getAllUsers = async (req, res) => {
         totalPages: Math.ceil(total / limit),
       },
       data: {
-        users: users.map((user) => buildUserResponse(user, req.user)),
+        users: users.map((user) => buildUserResponse(user, req.user, baseUrl)),
       },
     });
   } catch (error) {
@@ -112,10 +120,11 @@ exports.getAllUsers = async (req, res) => {
 };
 
 exports.getMe = async (req, res) => {
+  const baseUrl = getPublicBaseUrl(req);
   res.status(200).json({
     success: true,
     data: {
-      user: buildUserResponse(req.user, req.user),
+      user: buildUserResponse(req.user, req.user, baseUrl),
     },
   });
 };
@@ -138,10 +147,11 @@ exports.getUserById = async (req, res) => {
       });
     }
 
+    const baseUrl = getPublicBaseUrl(req);
     res.status(200).json({
       success: true,
       data: {
-        user: buildUserResponse(user, req.user),
+        user: buildUserResponse(user, req.user, baseUrl),
       },
     });
   } catch (error) {
@@ -167,10 +177,11 @@ exports.updateMe = async (req, res) => {
       runValidators: true,
     });
 
+    const baseUrl = getPublicBaseUrl(req);
     res.status(200).json({
       success: true,
       data: {
-        user: buildUserResponse(updatedUser, req.user),
+        user: buildUserResponse(updatedUser, req.user, baseUrl),
       },
     });
   } catch (error) {
@@ -190,17 +201,19 @@ exports.updateAvatar = async (req, res) => {
       });
     }
 
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const cloudinaryFile = await uploadToCloudinaryIfConfigured(req.file, 'husttrade/avatars');
+    const avatarUrl = cloudinaryFile?.url || `/uploads/avatars/${req.file.filename}`;
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
       { 'profile.avatarUrl': avatarUrl },
       { new: true, runValidators: true }
     );
 
+    const baseUrl = getPublicBaseUrl(req);
     res.status(200).json({
       success: true,
       data: {
-        user: buildUserResponse(updatedUser, req.user),
+        user: buildUserResponse(updatedUser, req.user, baseUrl),
       },
     });
   } catch (error) {
@@ -458,10 +471,11 @@ exports.updateUserStatus = async (req, res) => {
       });
     }
 
+    const baseUrl = getPublicBaseUrl(req);
     res.status(200).json({
       success: true,
       data: {
-        user: buildUserResponse(updatedUser, req.user),
+        user: buildUserResponse(updatedUser, req.user, baseUrl),
       },
     });
   } catch (error) {
@@ -504,10 +518,11 @@ exports.updateUserRole = async (req, res) => {
       });
     }
 
+    const baseUrl = getPublicBaseUrl(req);
     res.status(200).json({
       success: true,
       data: {
-        user: buildUserResponse(updatedUser, req.user),
+        user: buildUserResponse(updatedUser, req.user, baseUrl),
       },
     });
   } catch (error) {

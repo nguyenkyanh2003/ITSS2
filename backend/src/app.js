@@ -5,8 +5,11 @@ const morgan = require('morgan');
 const path = require('path');
 const routes = require('./routes');
 const { notFound, errorHandler } = require('./middlewares/error.middleware');
+const { buildCorsOptions } = require('./utils/cors');
 
 const app = express();
+
+app.set('trust proxy', 1);
 
 let corsOrigin = process.env.CORS_ORIGIN;
 if (!corsOrigin) {
@@ -21,7 +24,7 @@ if (!corsOrigin) {
 }
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: corsOrigin }));
+app.use(cors(buildCorsOptions()));
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true })); 
 

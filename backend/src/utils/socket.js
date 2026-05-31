@@ -1,12 +1,7 @@
 const { Server } = require('socket.io');
+const { buildCorsOptions } = require('./cors');
 
 let io;
-
-const buildCorsOptions = () => ({
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
-  credentials: true,
-});
 
 const initSocket = (httpServer, options = {}) => {
   if (!httpServer) {
@@ -14,7 +9,10 @@ const initSocket = (httpServer, options = {}) => {
   }
 
   io = new Server(httpServer, {
-    cors: buildCorsOptions(),
+    cors: {
+      ...buildCorsOptions(),
+      methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+    },
     ...options,
   });
 

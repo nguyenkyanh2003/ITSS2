@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from "react";
-import { getApiUrl } from "../../utils/api";
+import { getApiUrl, getAssetUrl } from "../../utils/api";
 
 export interface TimeSlot {
   day: string;
@@ -100,10 +100,10 @@ const parseTimeSlotNote = (note: string) => {
 };
 
 const resolveProductImage = (bp: any) => {
-  if (bp?.image) return bp.image;
+  if (bp?.image) return getAssetUrl(bp.image);
   if (bp?.images && bp.images.length > 0) {
     const first = bp.images[0];
-    return typeof first === 'string' ? first : first?.url;
+    return getAssetUrl(typeof first === 'string' ? first : first?.url);
   }
   return '';
 };
@@ -160,7 +160,7 @@ const mapBackendToFrontendProduct = (bp: any): Product => {
     seller: {
       id: bp.seller?.id || '',
       name: bp.seller?.fullName || bp.seller?.email || 'Unknown',
-      avatar: bp.seller?.avatarUrl || bp.seller?.profile?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
+      avatar: getAssetUrl(bp.seller?.avatarUrl || bp.seller?.profile?.avatarUrl) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
       rating: bp.seller?.trustStats?.averageRating || 5.0,
       totalReviews: bp.seller?.stats?.totalReviews || 0,
       soldItems: bp.seller?.stats?.totalSales || 0,

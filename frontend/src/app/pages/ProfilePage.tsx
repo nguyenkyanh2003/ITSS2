@@ -7,7 +7,7 @@ import { useProducts } from "../store/ProductStore";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { LanguageToggle } from "../components/LanguageToggle";
 import { useNotification } from "../../context/NotificationContext";
-import { getApiUrl } from "../../utils/api";
+import { getApiUrl, getAssetUrl } from "../../utils/api";
 
 export function ProfilePage() {
   const { user, isAuthenticated, logout, updateUser } = useAuth();
@@ -325,9 +325,9 @@ export function ProfilePage() {
           
           let image = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop";
           if (product.images && product.images.length > 0) {
-            image = product.images[0].url || product.images[0];
+            image = getAssetUrl(product.images[0].url || product.images[0]);
           } else if (product.image) {
-            image = product.image;
+            image = getAssetUrl(product.image);
           }
 
           return {
@@ -349,7 +349,8 @@ export function ProfilePage() {
         const productStatus = product?.productStatus || product?.condition || "used";
         const variant = productStatus === "new" ? "Mới" : (productStatus === "other" ? "Khác" : "Đã qua sử dụng");
         const price = Number(product?.price || 0);
-        const image = product?.image || (product?.images && product.images[0]?.url) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop";
+        const firstImage = Array.isArray(product?.images) ? product.images[0] : null;
+        const image = getAssetUrl(product?.image || firstImage?.url || firstImage) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop";
 
         items = [{
           id: String(productId),
