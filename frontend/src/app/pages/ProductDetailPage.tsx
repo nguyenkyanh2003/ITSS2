@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import Swal from "sweetalert2";
 import { useNotification } from "../../context/NotificationContext";
 import { getApiUrl } from "../../utils/api";
+import { ProductReviewsSection } from "../components/ProductReviewsSection";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -676,3 +677,4 @@ export function ProductDetailPage() {
     </div>
   );
 }
+           
