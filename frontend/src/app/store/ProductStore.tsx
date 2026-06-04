@@ -126,6 +126,14 @@ const buildQueryString = (params?: ProductQueryParams) => {
   return searchParams.toString();
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getRetryDelayMs = (attempt: number) => {
+  const base = 600 * attempt;
+  const jitter = Math.floor(Math.random() * 250);
+  return Math.min(2500, base + jitter);
+};
+
 const getProductFetchErrorMessage = (error: unknown) => {
   if (error instanceof DOMException && error.name === 'AbortError') {
     return "Backend đang khởi động quá lâu. Vui lòng thử lại sau vài giây.";
@@ -207,34 +215,63 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     try {
       const queryString = buildQueryString(params);
       const url = queryString ? getApiUrl(`/api/products?${queryString}`) : getApiUrl('/api/products');
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 70000);
-      let res: Response;
-      try {
-        res = await fetch(url, { signal: controller.signal });
-      } finally {
-        clearTimeout(timeout);
-      }
-      const data = await res.json();
+      const maxAttempts = 3;
+      const timeoutMs = 8000;
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || `API trả về lỗi ${res.status}`);
-      }
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-      const mapped = data.data.products.map(mapBackendToFrontendProduct);
-      // Preserve cached booking/reservedBy for products already in state
-      setProducts((prev) => {
-        const prevById = new Map(prev.map((p) => [p.id, p]));
-        return mapped.map((p: Product) => {
-          const existing = prevById.get(p.id);
-          if (!existing) return p;
-          return {
-            ...p,
-            booking: existing.booking || p.booking,
-            reservedBy: existing.reservedBy || p.reservedBy,
-          };
-        });
-      });
+        try {
+          const res = await fetch(url, { signal: controller.signal });
+          let data: any = null;
+
+          try {
+            data = await res.json();
+          } catch (jsonError) {
+            if (res.ok) {
+              throw jsonError;
+            }
+          }
+
+          if (!res.ok || !data?.success) {
+            const retryableStatus = res.status >= 500 && res.status <= 599;
+            if (retryableStatus && attempt < maxAttempts) {
+              await sleep(getRetryDelayMs(attempt));
+              continue;
+            }
+
+            const message = data?.message || `API trả về lỗi ${res.status}`;
+            throw new Error(message);
+          }
+
+          const mapped = data.data.products.map(mapBackendToFrontendProduct);
+          // Preserve cached booking/reservedBy for products already in state
+          setProducts((prev) => {
+            const prevById = new Map(prev.map((p) => [p.id, p]));
+            return mapped.map((p: Product) => {
+              const existing = prevById.get(p.id);
+              if (!existing) return p;
+              return {
+                ...p,
+                booking: existing.booking || p.booking,
+                reservedBy: existing.reservedBy || p.reservedBy,
+              };
+            });
+          });
+          return;
+        } catch (error) {
+          const isAbort = error instanceof DOMException && error.name === 'AbortError';
+          const isNetwork = error instanceof TypeError;
+          if ((isAbort || isNetwork) && attempt < maxAttempts) {
+            await sleep(getRetryDelayMs(attempt));
+            continue;
+          }
+          throw error;
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
     } catch (error) {
       console.error("Error fetching products:", {
         error,
