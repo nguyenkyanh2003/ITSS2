@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useLocation, useParams } from "react-router";
+import { Link, Navigate, useLocation, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
@@ -21,6 +21,7 @@ interface ChatMessage {
 export function ChatPage() {
   const { userId } = useParams<{ userId: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { showNotification } = useNotification();
   const errorTitle = "Lỗi";
@@ -29,7 +30,7 @@ export function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const state = (location.state || {}) as LocationState;
-  const sellerName = state.sellerName || "Người bán";
+  const sellerName = state.sellerName || "Người dùng";
 
   const token = useMemo(() => localStorage.getItem("token"), []);
 
@@ -52,6 +53,14 @@ export function ChatPage() {
 
         const items = Array.isArray(data.data?.messages) ? data.data.messages : [];
         setMessages(items.reverse());
+
+        await fetch(getApiUrl(`/api/chats/with/${userId}/read`), {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        window.dispatchEvent(new Event("messagesUpdated"));
       } catch (error: any) {
         showNotification(errorTitle, error.message || "Không thể tải tin nhắn", "error");
       } finally {
@@ -87,6 +96,7 @@ export function ChatPage() {
         setMessages((prev) => [...prev, message]);
       }
       setInput("");
+      window.dispatchEvent(new Event("messagesUpdated"));
     } catch (error: any) {
       showNotification(errorTitle, error.message || "Không thể gửi tin nhắn", "error");
     }
@@ -101,9 +111,9 @@ export function ChatPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600">Không tìm thấy hội thoại.</p>
-          <Link to="/profile" className="text-[#FF5C00] hover:underline">
-            Quay lại hồ sơ
-          </Link>
+          <button onClick={() => navigate(-1)} className="text-[#FF5C00] hover:underline">
+            Quay lại
+          </button>
         </div>
       </div>
     );
@@ -113,10 +123,10 @@ export function ChatPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-[#FF5C00] px-6 py-4 shadow-md">
         <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <Link to="/profile" className="inline-flex items-center gap-2 text-white hover:opacity-80">
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-white hover:opacity-80">
             <ArrowLeft className="w-5 h-5" />
             <span>Quay lại</span>
-          </Link>
+          </button>
           <div className="text-white font-semibold ml-2">{sellerName}</div>
         </div>
       </header>
@@ -147,6 +157,12 @@ export function ChatPage() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder="Nhập tin nhắn..."
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
             />

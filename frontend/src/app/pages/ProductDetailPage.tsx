@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router";
-import { ArrowLeft, MapPin, Clock, CheckCircle, Phone, Upload } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, MapPin, Clock, CheckCircle, Phone, Upload, MessageCircle } from "lucide-react";
 import { useProducts, Product } from "../store/ProductStore";
 import { BookingModal } from "../components/BookingModal";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -157,6 +157,49 @@ export function ProductDetailPage() {
     );
   }
 
+  const currentUserId = user?.id ? String(user.id) : null;
+  const sellerId = product?.seller?.id ? String(product.seller.id) : null;
+  const isSeller = Boolean(currentUserId && sellerId && currentUserId === sellerId);
+
+  const handleContactSeller = async () => {
+    if (!sellerId) {
+      showNotification(errorTitle, "Không tìm thấy người bán để liên hệ.", "error");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!isAuthenticated || !token) {
+      showNotification(errorTitle, "Vui lòng đăng nhập để nhắn tin người bán.", "error");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(getApiUrl("/api/chats/conversations"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sellerId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Không thể tạo cuộc trò chuyện");
+      }
+
+      navigate(`/chat/${sellerId}`, {
+        state: {
+          conversationId: data.data?.conversation?.id,
+          sellerName: product.seller.name,
+        },
+      });
+    } catch (error: any) {
+      showNotification(errorTitle, error.message || "Không thể liên hệ người bán", "error");
+    }
+  };
+
   const handleBooking = async (time: string, spot: string) => {
     if (!product) return;
 
@@ -167,7 +210,12 @@ export function ProductDetailPage() {
       return;
     }
 
-    const isReschedule = (product.status === 'reserved' && user?.id && product.reservedBy && user.id === product.reservedBy) || Boolean(product.booking);
+    const isReschedule = (
+      product.status === 'reserved' &&
+      currentUserId &&
+      product.reservedBy &&
+      currentUserId === String(product.reservedBy)
+    ) || Boolean(product.booking);
 
     try {
       const res = await fetch(getApiUrl(`/api/products/${product.id}/${isReschedule ? "reschedule" : "reserve"}`), {
@@ -191,11 +239,28 @@ export function ProductDetailPage() {
         updateProduct(product.id, { booking: { time, spot } });
         setProduct({ ...product, booking: { time, spot } });
       } else {
-        updateProduct(product.id, { status: 'reserved', booking: { time, spot }, reservedBy: user?.id });
-        setProduct({ ...product, status: 'reserved', booking: { time, spot }, reservedBy: user?.id });
+        const currentQty = product.quantity !== undefined ? product.quantity : (product.stock || 1);
+        const newQty = Math.max(0, currentQty - 1);
+        const newStatus = newQty === 0 ? 'sold' : 'reserved';
+        
+        updateProduct(product.id, { 
+          status: newStatus, 
+          booking: { time, spot }, 
+          reservedBy: currentUserId || undefined,
+          quantity: newQty,
+          stock: newQty
+        });
+        setProduct({ 
+          ...product, 
+          status: newStatus, 
+          booking: { time, spot }, 
+          reservedBy: currentUserId || product.reservedBy,
+          quantity: newQty,
+          stock: newQty
+        });
       }
       setIsModalOpen(false);
-      showNotification(successTitle, isReschedule ? "Đã đổi lịch hẹn." : t.bookingSuccess, "success");
+      showNotification(successTitle, isReschedule ? "Đã đổi lịch hẹn." : "Mua hàng / Đặt lịch hẹn thành công!", "success");
       // Notify other parts of the app (e.g., Profile orders) to refresh
       try {
         window.dispatchEvent(new Event('ordersUpdated'));
@@ -296,6 +361,10 @@ export function ProductDetailPage() {
                 ))}
               </div>
             </div>
+
+            {product.seller?.id && (
+              <ProductReviewsSection sellerId={product.seller.id} />
+            )}
           </div>
 
           {/* Right Column - Seller Card */}
@@ -363,7 +432,7 @@ export function ProductDetailPage() {
                 </div>
               )}
 
-              {user?.id === product.seller.id ? (
+              {isSeller ? (
                 <div className="space-y-3">
                   <button
                     onClick={() => {
@@ -459,7 +528,7 @@ export function ProductDetailPage() {
                 </div>
               ) : (product.status === 'reserved') ? (
                 // reserved but may be reserved by current user
-                user?.id && product.reservedBy && user.id === product.reservedBy ? (
+                currentUserId && product.reservedBy && currentUserId === String(product.reservedBy) ? (
                   <button
                     onClick={() => {
                       if (!isAuthenticated) {
@@ -482,18 +551,18 @@ export function ProductDetailPage() {
                     Đã có người đặt
                   </button>
                 )
-              ) : (product.status === 'sold' || product.stock === 0) ? (
+              ) : (product.quantity === 0 || product.stock === 0 || product.status === 'sold') ? (
                 <button
                   disabled
                   className="w-full bg-gray-300 text-gray-500 px-6 py-3 rounded-lg font-semibold cursor-not-allowed transition-colors"
                 >
-                  {product.status === 'sold' ? 'Đã có người đặt' : 'Hết hàng'}
+                  Đã hết hàng
                 </button>
               ) : (
                 <button
                   onClick={() => {
                     if (!isAuthenticated) {
-                      showNotification(errorTitle, t.errLoginToBook || "Vui lòng đăng nhập để đặt lịch hẹn!", "error");
+                      showNotification(errorTitle, t.errLoginToBook || "Vui lòng đăng nhập để đặt hàng!", "error");
                       navigate('/login');
                     } else {
                       setIsModalOpen(true);
@@ -501,7 +570,16 @@ export function ProductDetailPage() {
                   }}
                   className="w-full bg-[#FF5C00] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#E65100] transition-colors"
                 >
-                  {t.bookNow}
+                  {product.quantity && product.quantity > 0 ? "Mua ngay" : t.bookNow}
+                </button>
+              )}
+              {!isSeller && sellerId && (
+                <button
+                  onClick={handleContactSeller}
+                  className="mt-3 w-full border border-[#FF5C00] text-[#FF5C00] px-6 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  Nhắn tin người bán
                 </button>
               )}
             </div>

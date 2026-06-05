@@ -1,5 +1,4 @@
-import { RouterProvider } from "react-router";
-import { router } from "./routes";
+import { AppRoutes } from "./routes";
 import { ProductProvider } from "./store/ProductStore";
 import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider } from "./context/AuthContext";
@@ -11,7 +10,7 @@ export default function App() {
       <AuthProvider>
         <ProductProvider>
           <CartProvider>
-            <RouterProvider router={router} />
+            <AppRoutes />
           </CartProvider>
         </ProductProvider>
       </AuthProvider>

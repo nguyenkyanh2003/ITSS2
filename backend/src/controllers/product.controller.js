@@ -3,6 +3,7 @@ const path = require('path');
 const Product = require('../models/product.model');
 const User = require('../models/user.model');
 const Order = require('../models/Order');
+const Review = require('../models/Review');
 const { CAMPUS_LOCATION_IDS } = require('../constants/locations');
 const { buildRelativeFileUrl, getPublicBaseUrl, normalizeMediaUrl } = require('../utils/media');
 const { uploadToCloudinaryIfConfigured } = require('../utils/cloudinaryUpload');
@@ -481,10 +482,48 @@ exports.getProductById = async (req, res) => {
       }).sort({ updatedAt: -1, createdAt: -1 });
     }
 
+    const productData = product.toObject();
+    const sellerId = productData.seller?._id || productData.seller?.id || productData.seller;
+
+    if (sellerId) {
+      const sellerObjectId = new mongoose.Types.ObjectId(String(sellerId));
+      const [soldAgg, reviewAgg] = await Promise.all([
+        Order.aggregate([
+          { $match: { seller: sellerObjectId, status: 'completed' } },
+          { $unwind: '$items' },
+          { $group: { _id: '$seller', totalSold: { $sum: '$items.quantity' } } },
+        ]),
+        Review.aggregate([
+          { $match: { reviewedUser: sellerObjectId } },
+          { $group: { _id: '$reviewedUser', averageRating: { $avg: '$rating' }, totalReviews: { $sum: 1 } } },
+        ]),
+      ]);
+
+      const soldCount = soldAgg?.[0]?.totalSold ?? productData.seller?.stats?.totalSold ?? 0;
+      const rawAvg = reviewAgg?.[0]?.averageRating;
+      const averageRating = Number.isFinite(rawAvg)
+        ? Number(Number(rawAvg).toFixed(2))
+        : (productData.seller?.trustStats?.averageRating ?? 0);
+      const totalReviews = reviewAgg?.[0]?.totalReviews ?? productData.seller?.trustStats?.totalTransactions ?? 0;
+
+      productData.seller = {
+        ...productData.seller,
+        stats: {
+          ...(productData.seller?.stats || {}),
+          totalSold: soldCount,
+        },
+        trustStats: {
+          ...(productData.seller?.trustStats || {}),
+          averageRating,
+          totalTransactions: totalReviews,
+        },
+      };
+    }
+
     res.status(200).json({
       success: true,
       data: {
-        product: buildProductResponse(product, baseUrl, {
+        product: buildProductResponse(productData, baseUrl, {
           booking: buildBookingResponse(activeOrder),
           reservedBy: activeOrder ? getIdString(activeOrder.buyer) : null,
         }),

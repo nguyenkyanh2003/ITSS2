@@ -4,6 +4,7 @@ const chatController = require('../controllers/chat.controller');
 const { protect } = require('../middlewares/auth.middleware');
 
 router.get('/with/:userId', protect, chatController.getConversation);
+router.get('/conversations', protect, chatController.listConversations);
 router.post('/conversations', protect, chatController.getOrCreateConversation);
 router.post('/with/:userId', protect, chatController.sendMessage);
 router.patch('/with/:userId/read', protect, chatController.markConversationRead);
