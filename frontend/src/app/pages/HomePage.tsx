@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
-import { Search, Plus, Store, Clock } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Search, Plus, Store, Clock, MessageCircle } from "lucide-react";
 import { useProducts, ProductQueryParams } from "../store/ProductStore";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { useLanguage } from "../context/LanguageContext";
 import { LanguageToggle } from "../components/LanguageToggle";
 import { useAuth } from "../context/AuthContext";
+import { useUnreadMessages } from "../hooks/useUnreadMessages";
 import { useNotification } from "../../context/NotificationContext";
 import { getApiUrl } from "../../utils/api";
 
@@ -73,6 +74,7 @@ export function HomePage() {
   const { showNotification } = useNotification();
   const errorTitle = "Lỗi";
   const navigate = useNavigate();
+  const { unreadCount } = useUnreadMessages(isAuthenticated);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -294,6 +296,19 @@ export function HomePage() {
                 </Link>
               ) : (
                 <div className="flex items-center gap-3">
+                  <Link
+                    to="/messages"
+                    className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/15 text-white hover:bg-white/25 transition-colors"
+                    aria-label="Tin nhắn"
+                    title="Tin nhắn"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-white text-[#FF5C00] text-xs font-bold flex items-center justify-center">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </Link>
                   <Link
                     to="/profile"
                     className="flex items-center"

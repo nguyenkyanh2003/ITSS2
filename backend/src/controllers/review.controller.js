@@ -3,10 +3,22 @@ const Review = require('../models/Review');
 const Order = require('../models/Order');
 const User = require('../models/user.model');
 
+const normalizeReviewer = (reviewer) => {
+  if (!reviewer) return null;
+  if (typeof reviewer === 'object') {
+    return {
+      id: reviewer._id || reviewer.id,
+      fullName: reviewer.fullName || null,
+      avatarUrl: reviewer.profile?.avatarUrl || reviewer.avatarUrl || null,
+    };
+  }
+  return reviewer;
+};
+
 const buildReviewResponse = (review) => ({
   id: review._id,
   order: review.order,
-  reviewer: review.reviewer,
+  reviewer: normalizeReviewer(review.reviewer),
   reviewedUser: review.reviewedUser,
   rating: review.rating,
   comment: review.comment,
@@ -57,7 +69,11 @@ const listReviews = async ({ filter, page, limit }) => {
   const skip = (page - 1) * limit;
 
   const [reviews, total] = await Promise.all([
-    Review.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Review.find(filter)
+      .populate('reviewer', 'fullName profile.avatarUrl')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
     Review.countDocuments(filter),
   ]);
 

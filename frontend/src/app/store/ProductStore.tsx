@@ -12,6 +12,7 @@ export interface Product {
   titleJa?: string;
   price: number;
   stock?: number;
+  quantity?: number;
   description: string;
   descriptionJa?: string;
   condition: string;
@@ -147,12 +148,17 @@ const getProductFetchErrorMessage = (error: unknown) => {
 };
 
 const mapBackendToFrontendProduct = (bp: any): Product => {
+  const resolvedProductId = bp?.id || bp?._id;
+  const resolvedSellerId = bp?.seller?.id || bp?.seller?._id;
+  const resolvedReservedBy = bp?.reservedBy?.id || bp?.reservedBy?._id || bp?.reservedBy;
+
   return {
-    id: bp.id,
+    id: resolvedProductId ? String(resolvedProductId) : '',
     title: bp.title,
     titleJa: bp.title, // or fallback
     price: bp.price,
     stock: typeof bp.stock === 'number' ? bp.stock : undefined,
+    quantity: typeof bp.quantity === 'number' ? bp.quantity : (typeof bp.stock === 'number' ? bp.stock : undefined),
     description: bp.description,
     descriptionJa: bp.description,
     condition: bp.productStatus === 'new' ? 'Mới' : (bp.productStatus === 'other' ? 'Khác' : 'Đã qua sử dụng'),
@@ -166,19 +172,19 @@ const mapBackendToFrontendProduct = (bp: any): Product => {
       ? 'in-stock'
       : (bp.status === 'reserved' ? 'reserved' : (bp.status === 'sold' ? 'sold' : 'inactive')),
     seller: {
-      id: bp.seller?.id || '',
+      id: resolvedSellerId ? String(resolvedSellerId) : '',
       name: bp.seller?.fullName || bp.seller?.email || 'Unknown',
       avatar: getAssetUrl(bp.seller?.avatarUrl || bp.seller?.profile?.avatarUrl) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
-      rating: bp.seller?.trustStats?.averageRating || 5.0,
-      totalReviews: bp.seller?.stats?.totalReviews || 0,
-      soldItems: bp.seller?.stats?.totalSales || 0,
+      rating: Number(bp.seller?.trustStats?.averageRating ?? bp.seller?.stats?.averageRating ?? 0),
+      totalReviews: Number(bp.seller?.trustStats?.totalTransactions ?? bp.seller?.stats?.totalReviews ?? 0),
+      soldItems: Number(bp.seller?.stats?.totalSold ?? bp.seller?.stats?.totalSales ?? 0),
       memberSince: '2024',
       verified: bp.seller?.isVerified || false,
       phone: bp.seller?.phone || bp.seller?.phoneNumber || '0123456789',
       soldHistory: []
     },
     booking: bp.booking ? { time: bp.booking.time || '', spot: bp.booking.spot || '' } : undefined,
-    reservedBy: bp.reservedBy?.id || bp.reservedBy?._id || bp.reservedBy || null,
+    reservedBy: resolvedReservedBy ? String(resolvedReservedBy) : null,
     availableTimeSlots: Array.isArray(bp.availableTimeSlots) ? bp.availableTimeSlots.map((slot: any) => {
       if (slot?.day && slot?.time) return { day: slot.day, time: slot.time };
       if (slot?.startAt && slot?.endAt) {

@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect, useCallback, useRef, type ChangeEvent } from "react";
-import { Link, Navigate, useNavigate } from "react-router";
-import { ArrowLeft, User as UserIcon, Star, CheckCircle, Package, ShoppingBag, Store, X, Camera } from "lucide-react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { ArrowLeft, User as UserIcon, Star, CheckCircle, Package, ShoppingBag, Store, X, Camera, MessageCircle, KeyRound } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useProducts } from "../store/ProductStore";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { LanguageToggle } from "../components/LanguageToggle";
+import { useUnreadMessages } from "../hooks/useUnreadMessages";
 import { useNotification } from "../../context/NotificationContext";
 import { getApiUrl, getAssetUrl } from "../../utils/api";
 
@@ -17,6 +18,8 @@ export function ProfilePage() {
   const { showNotification } = useNotification();
   const errorTitle = "Lỗi";
   const successTitle = "Thành công";
+  const currentUserId = user?.id ? String(user.id) : null;
+  const { unreadCount } = useUnreadMessages(isAuthenticated);
   
   const [activeTab, setActiveTab] = useState<"listings" | "purchases" | "sales">("listings");
   
@@ -26,6 +29,10 @@ export function ProfilePage() {
   const [editPhone, setEditPhone] = useState(user?.phone || "");
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState(user?.avatarUrl || "");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   // State for My Orders Tab
@@ -167,11 +174,19 @@ export function ProfilePage() {
   ];
 
   // Handlers for Edit Modal
+  const resetPasswordFields = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setIsChangingPassword(false);
+  };
+
   const openEditModal = () => {
     setEditName(user.fullName);
     setEditPhone(user.phone);
     setEditAvatarFile(null);
     setEditAvatarPreview(user.avatarUrl || "");
+    resetPasswordFields();
     setIsEditModalOpen(true);
   };
 
@@ -208,6 +223,7 @@ export function ProfilePage() {
     revokePreviewUrl(editAvatarPreview);
     setEditAvatarFile(null);
     setEditAvatarPreview(user.avatarUrl || "");
+    resetPasswordFields();
     setIsEditModalOpen(false);
   };
 
@@ -286,6 +302,57 @@ export function ProfilePage() {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      showNotification(errorTitle, "Vui lòng nhập đầy đủ thông tin đổi mật khẩu.", "error");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      showNotification(errorTitle, "Mật khẩu mới cần ít nhất 6 ký tự.", "error");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showNotification(errorTitle, "Mật khẩu xác nhận không khớp.", "error");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      showNotification(errorTitle, "Vui lòng đăng nhập lại để đổi mật khẩu.", "error");
+      logout();
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      const res = await fetch(getApiUrl("/api/users/me/password"), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Không thể đổi mật khẩu.");
+      }
+
+      resetPasswordFields();
+      showNotification(successTitle, "Đổi mật khẩu thành công.", "success");
+    } catch (error: any) {
+      showNotification(errorTitle, error.message || "Không thể đổi mật khẩu.", "error");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   const [ordersRaw, setOrdersRaw] = useState<any[]>([]);
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
@@ -302,9 +369,10 @@ export function ProfilePage() {
   const toId = (value: any) => {
     if (!value) return null;
     if (typeof value === "object") {
-      return value.id || value._id || null;
+      const rawId = value.id || value._id;
+      return rawId ? String(rawId) : null;
     }
-    return value;
+    return String(value);
   };
 
   const mappedOrders = useMemo(() => {
@@ -371,6 +439,8 @@ export function ProfilePage() {
         statusText: statusInfo.text,
         sellerName,
         sellerId,
+        buyerName,
+        buyerId,
         items,
         totalAmount,
       };
@@ -383,13 +453,13 @@ export function ProfilePage() {
 
   const totalSoldCount = useMemo(() => {
     if (!user) return 0;
-    return completedOrders.filter((order) => toId(order.seller) === user.id).length;
-  }, [completedOrders, user]);
+    return completedOrders.filter((order) => toId(order.seller) === currentUserId).length;
+  }, [completedOrders, currentUserId, user]);
 
   const totalBoughtCount = useMemo(() => {
     if (!user) return 0;
-    return completedOrders.filter((order) => toId(order.buyer) === user.id).length;
-  }, [completedOrders, user]);
+    return completedOrders.filter((order) => toId(order.buyer) === currentUserId).length;
+  }, [completedOrders, currentUserId, user]);
 
   // Lọc sản phẩm của user hiện tại (so sánh bằng email hoặc fullName)
   const myListings = useMemo(() => {
@@ -542,7 +612,7 @@ export function ProfilePage() {
   }, [cancelOrderId, cancelReason, cancelReasonOther, closeCancelModal, logout]);
 
   useEffect(() => {
-    if (activeTab === "orders") {
+    if (activeTab === "purchases" || activeTab === "sales") {
       loadOrders();
     }
   }, [activeTab, loadOrders]);
@@ -565,15 +635,15 @@ export function ProfilePage() {
   const filteredOrders = useMemo(() => {
     let base = mappedOrders;
     if (activeTab === "purchases") {
-      base = base.filter(o => o.buyerId === user?.id);
+      base = currentUserId ? base.filter(o => o.buyerId === currentUserId) : [];
     } else if (activeTab === "sales") {
-      base = base.filter(o => o.sellerId === user?.id);
+      base = currentUserId ? base.filter(o => o.sellerId === currentUserId) : [];
     }
     if (orderStatusTab !== "all") {
       base = base.filter(o => o.status === orderStatusTab);
     }
     return base;
-  }, [mappedOrders, activeTab, orderStatusTab, user]);
+  }, [mappedOrders, activeTab, orderStatusTab, currentUserId]);
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
@@ -590,6 +660,19 @@ export function ProfilePage() {
           </Link>
           <div className="flex items-center gap-4">
             <LanguageToggle />
+            <Link
+              to="/messages"
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/15 text-white hover:bg-white/25 transition-colors"
+              aria-label="Tin nhắn"
+              title="Tin nhắn"
+            >
+              <MessageCircle className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-white text-[#FF5C00] text-xs font-bold flex items-center justify-center">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </Link>
             <button
               onClick={logout}
               className="text-white text-sm hover:underline"
@@ -636,6 +719,18 @@ export function ProfilePage() {
               >
                 {t.editProfile}
               </button>
+              <Link
+                to="/messages"
+                className="w-full mt-3 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Tin nhắn</span>
+                {unreadCount > 0 && (
+                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#FF5C00] text-white text-xs flex items-center justify-center">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </Link>
             </div>
 
             {/* Stats */}
@@ -920,7 +1015,7 @@ export function ProfilePage() {
       {/* Modal Chỉnh sửa hồ sơ */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
             {/* Modal Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <h3 className="text-xl font-bold text-gray-900">Chỉnh sửa hồ sơ</h3>
@@ -933,7 +1028,7 @@ export function ProfilePage() {
             </div>
             
             {/* Modal Body */}
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto">
               {/* Avatar Upload */}
               <div className="flex flex-col items-center">
                 <div className="relative">
@@ -996,6 +1091,52 @@ export function ProfilePage() {
                   disabled
                   className="w-full px-4 py-3 border border-gray-200 bg-gray-100 text-gray-500 rounded-lg cursor-not-allowed outline-none"
                 />
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 space-y-4">
+                <div className="flex items-center gap-2 text-gray-900 font-semibold">
+                  <KeyRound className="w-5 h-5 text-[#FF5C00]" />
+                  <span>Đổi mật khẩu</span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu hiện tại</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Xác nhận mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleChangePassword}
+                  disabled={isChangingPassword}
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium transition-colors disabled:opacity-60"
+                >
+                  {isChangingPassword ? "Đang đổi mật khẩu..." : "Đổi mật khẩu"}
+                </button>
               </div>
             </div>
             

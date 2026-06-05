@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
 const User = require('../models/user.model');
+const { getPublicBaseUrl, normalizeMediaUrl } = require('../utils/media');
 
 const buildMessageResponse = (message) => ({
   id: message._id,
@@ -14,13 +15,51 @@ const buildMessageResponse = (message) => ({
   updatedAt: message.updatedAt,
 });
 
-const buildConversationResponse = (conversation) => ({
-  id: conversation._id,
-  participants: conversation.participants,
-  lastMessage: conversation.lastMessage,
-  createdAt: conversation.createdAt,
-  updatedAt: conversation.updatedAt,
-});
+const getDocumentId = (value) => {
+  if (!value) return '';
+  if (value._id) return String(value._id);
+  if (value.id) return String(value.id);
+  return String(value);
+};
+
+const getParticipantsKey = (firstUserId, secondUserId) => {
+  return [String(firstUserId), String(secondUserId)].sort().join('_');
+};
+
+const buildUserSummary = (user, baseUrl = null) => {
+  if (!user) return null;
+  const profile = user.profile?.toObject ? user.profile.toObject() : { ...(user.profile || {}) };
+
+  return {
+    id: user._id || user.id,
+    fullName: user.fullName,
+    email: user.email,
+    avatarUrl: profile.avatarUrl ? normalizeMediaUrl(profile.avatarUrl, baseUrl) : undefined,
+  };
+};
+
+const buildConversationResponse = (conversation, currentUserId = null, unreadCount = 0, baseUrl = null) => {
+  const participants = Array.isArray(conversation.participants) ? conversation.participants : [];
+  const otherParticipant = currentUserId
+    ? participants.find((participant) => getDocumentId(participant) !== String(currentUserId))
+    : null;
+
+  const lastMessage = conversation.lastMessage && conversation.lastMessage._id
+    ? buildMessageResponse(conversation.lastMessage)
+    : conversation.lastMessage;
+
+  return {
+    id: conversation._id,
+    participants,
+    otherUser: otherParticipant && typeof otherParticipant === 'object'
+      ? buildUserSummary(otherParticipant, baseUrl)
+      : undefined,
+    lastMessage,
+    unreadCount,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+  };
+};
 
 const normalizeContent = (value) => {
   if (typeof value !== 'string') {
@@ -95,7 +134,7 @@ exports.getOrCreateConversation = async (req, res) => {
     }
 
     const participantIds = [currentUserId, otherUserId].sort();
-    const participantsKey = participantIds.join('_');
+    const participantsKey = getParticipantsKey(currentUserId, otherUserId);
 
     let conversation = await Conversation.findOne({ participantsKey });
     if (!conversation) {
@@ -117,6 +156,74 @@ exports.getOrCreateConversation = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || 'Lỗi server khi tạo hội thoại.',
+    });
+  }
+};
+
+exports.listConversations = async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+    const page = parsePage(req.query.page, 1);
+    const limit = parseLimit(req.query.limit, 20, 100);
+    const skip = (page - 1) * limit;
+
+    const [conversations, total, unreadGroups] = await Promise.all([
+      Conversation.find({ participants: currentUserId })
+        .populate({
+          path: 'participants',
+          select: 'fullName email profile.avatarUrl',
+        })
+        .populate('lastMessage')
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Conversation.countDocuments({ participants: currentUserId }),
+      Message.aggregate([
+        {
+          $match: {
+            receiver: currentUserId,
+            isRead: false,
+          },
+        },
+        {
+          $group: {
+            _id: '$sender',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const unreadBySender = new Map(
+      unreadGroups.map((item) => [String(item._id), item.count])
+    );
+    const baseUrl = getPublicBaseUrl(req);
+
+    const data = conversations.map((conversation) => {
+      const otherParticipant = conversation.participants.find(
+        (participant) => getDocumentId(participant) !== String(currentUserId)
+      );
+      const unreadCount = unreadBySender.get(getDocumentId(otherParticipant)) || 0;
+      return buildConversationResponse(conversation, currentUserId, unreadCount, baseUrl);
+    });
+
+    return res.status(200).json({
+      success: true,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      data: {
+        conversations: data,
+        unreadTotal: unreadGroups.reduce((sum, item) => sum + item.count, 0),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi server khi lấy danh sách hội thoại.',
     });
   }
 };
@@ -159,6 +266,26 @@ exports.sendMessage = async (req, res) => {
       receiver: receiver._id,
       content,
     });
+
+    const participantIds = [String(req.user._id), String(receiver._id)].sort();
+    const participantsKey = getParticipantsKey(req.user._id, receiver._id);
+    await Conversation.findOneAndUpdate(
+      { participantsKey },
+      {
+        $set: {
+          participants: participantIds,
+          participantsKey,
+          lastMessage: message._id,
+        },
+        $setOnInsert: {
+          createdBy: req.user._id,
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+      }
+    );
 
     return res.status(201).json({
       success: true,

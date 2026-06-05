@@ -205,6 +205,16 @@ exports.createOrder = async (req, res) => {
         });
       }
 
+      if (product.stock <= 0) {
+        if (session.inTransaction()) {
+          await session.abortTransaction();
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'Sản phẩm đã hết hàng',
+        });
+      }
+
       if (product.stock < item.quantity) {
         if (session.inTransaction()) {
           await session.abortTransaction();
@@ -263,13 +273,23 @@ exports.createOrder = async (req, res) => {
       { session }
     );
 
-    // Deduct stock from all products
+    // Deduct stock from all products atomically to prevent race conditions
     for (const item of items) {
-      await Product.findByIdAndUpdate(
-        item.product,
+      const updatedProduct = await Product.findOneAndUpdate(
+        { _id: item.product, stock: { $gte: item.quantity } },
         { $inc: { stock: -item.quantity } },
-        { session }
+        { session, new: true }
       );
+
+      if (!updatedProduct) {
+        if (session.inTransaction()) {
+          await session.abortTransaction();
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'Sản phẩm đã hết hàng hoặc không đủ số lượng do có người vừa mua.',
+        });
+      }
     }
 
     await session.commitTransaction();
@@ -611,6 +631,17 @@ exports.completeOrder = async (req, res) => {
         { _id: { $in: productIds } },
         { status: 'sold' }
       );
+    }
+
+    const totalItems = Array.isArray(order.items)
+      ? order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+      : 0;
+
+    if (totalItems > 0) {
+      await Promise.all([
+        User.findByIdAndUpdate(order.seller, { $inc: { 'stats.totalSold': totalItems } }),
+        User.findByIdAndUpdate(order.buyer, { $inc: { 'stats.totalBought': totalItems } }),
+      ]);
     }
 
     res.status(200).json({

@@ -25,13 +25,16 @@ const normalizeAvatarUrl = (value?: string | null) => {
   return getAssetUrl(value);
 };
 
-const buildUserState = (rawUser: any, fallbackPhone?: string) => ({
-  id: rawUser.id,
-  email: rawUser.email,
-  fullName: rawUser.fullName,
-  phone: rawUser.phoneNumber || rawUser.phone || fallbackPhone || "0123456789",
-  avatarUrl: normalizeAvatarUrl(rawUser.profile?.avatarUrl),
-});
+const buildUserState = (rawUser: any, fallbackPhone?: string) => {
+  const resolvedId = rawUser?.id || rawUser?._id;
+  return {
+    id: resolvedId ? String(resolvedId) : "",
+    email: rawUser.email,
+    fullName: rawUser.fullName,
+    phone: rawUser.phoneNumber || rawUser.phone || fallbackPhone || "0123456789",
+    avatarUrl: normalizeAvatarUrl(rawUser.profile?.avatarUrl),
+  };
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

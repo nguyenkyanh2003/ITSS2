@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, Navigate } from "react-router";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { ArrowLeft, Upload } from "lucide-react";
 import { useProducts } from "../store/ProductStore";
 import { useLanguage } from "../context/LanguageContext";
