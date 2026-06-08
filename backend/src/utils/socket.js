@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 const { buildCorsOptions } = require('./cors');
 
@@ -16,15 +17,28 @@ const initSocket = (httpServer, options = {}) => {
     ...options,
   });
 
-  io.on('connection', (socket) => {
-    socket.on('identify', (userId) => {
-      if (!userId) {
-        return;
-      }
+  // Verify JWT on every socket connection — client must pass token in handshake auth
+  io.use((socket, next) => {
+    const token =
+      socket.handshake.auth?.token ||
+      (socket.handshake.headers?.authorization || '').replace(/^Bearer\s+/i, '');
 
-      socket.data.userId = String(userId);
-      socket.join(socket.data.userId);
-    });
+    if (!token) {
+      return next(new Error('Authentication required'));
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.data.userId = String(decoded.id);
+      return next();
+    } catch {
+      return next(new Error('Invalid or expired token'));
+    }
+  });
+
+  io.on('connection', (socket) => {
+    // Join a room named after the verified user ID so messages can be targeted
+    socket.join(socket.data.userId);
 
     socket.on('chat:message', (payload) => {
       const toUserId = payload?.toUserId;
@@ -35,7 +49,7 @@ const initSocket = (httpServer, options = {}) => {
       }
 
       io.to(String(toUserId)).emit('chat:message', {
-        fromUserId: socket.data.userId || null,
+        fromUserId: socket.data.userId,
         message,
         createdAt: new Date().toISOString(),
       });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ArrowLeft, Inbox, MessageCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -97,7 +97,7 @@ export function MessagesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-[#FF5C00] px-6 py-4 shadow-md">
+      <header className="bg-[#EE4D2D] px-6 py-4 shadow-md">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2 text-white hover:opacity-80">
             <ArrowLeft className="w-5 h-5" />
@@ -150,7 +150,7 @@ export function MessagesPage() {
                       <div className="flex items-center gap-3">
                         <div className="font-semibold text-gray-900 truncate">{displayName}</div>
                         {conversation.unreadCount > 0 && (
-                          <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#FF5C00] text-white text-xs flex items-center justify-center">
+                          <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#EE4D2D] text-white text-xs flex items-center justify-center">
                             {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
                           </span>
                         )}

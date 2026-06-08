@@ -11,15 +11,24 @@ const app = express();
 
 app.set('trust proxy', 1);
 
-let corsOrigin = process.env.CORS_ORIGIN;
-if (!corsOrigin) {
-  // In development, allow local frontend to communicate; in production require explicit config
-  if (process.env.NODE_ENV === 'development') {
-    corsOrigin = 'http://localhost:5173';
-    console.warn('CORS_ORIGIN not set — defaulting to http://localhost:5173 for development');
-  } else {
+// Warn when Cloudinary is not configured — local uploads won't be visible across machines
+if (
+  !process.env.CLOUDINARY_CLOUD_NAME ||
+  !process.env.CLOUDINARY_API_KEY ||
+  !process.env.CLOUDINARY_API_SECRET
+) {
+  console.warn(
+    '[WARNING] Cloudinary chưa được cấu hình. Ảnh sản phẩm chỉ lưu local và sẽ KHÔNG hiển thị được trên các máy khác.\n' +
+    '  → Đăng ký miễn phí tại https://cloudinary.com rồi thêm CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET vào file .env'
+  );
+}
+
+if (!process.env.CORS_ORIGIN) {
+  if (process.env.NODE_ENV !== 'development') {
     console.error('CORS_ORIGIN is not set in .env');
     process.exit(1);
+  } else {
+    console.warn('CORS_ORIGIN not set — defaulting to localhost origins for development');
   }
 }
 
@@ -32,8 +41,15 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-app.use('/config', express.static(path.join(__dirname, 'config')));
+// Fix: force image/jpeg for .jfif files (mime-types returns image/pjpeg which some browsers reject)
+const JFIF_FIX = (res, filePath) => {
+  if (filePath.endsWith('.jfif') || filePath.endsWith('.JFIF')) {
+    res.setHeader('Content-Type', 'image/jpeg');
+  }
+};
+
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), { setHeaders: JFIF_FIX }));
+app.use('/config', express.static(path.join(__dirname, 'config'), { setHeaders: JFIF_FIX }));
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));

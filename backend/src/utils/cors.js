@@ -1,9 +1,17 @@
 const buildCorsOptions = () => {
-  const allowedOrigins = [
+  const defaultOrigins = [
     'https://itss-2-ten.vercel.app',
     'http://localhost:3000',
-    'http://localhost:5173'
+    'http://localhost:5173',
   ];
+
+  // Merge any extra origins from CORS_ORIGIN env var (comma-separated)
+  const envOrigins = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  const allowedOrigins = new Set([...defaultOrigins, ...envOrigins]);
 
   return {
     origin(origin, callback) {
@@ -11,7 +19,7 @@ const buildCorsOptions = () => {
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      if (allowedOrigins.has(origin) || origin.endsWith('.vercel.app')) {
         return callback(null, true);
       }
 

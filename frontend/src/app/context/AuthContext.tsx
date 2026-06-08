@@ -31,7 +31,7 @@ const buildUserState = (rawUser: any, fallbackPhone?: string) => {
     id: resolvedId ? String(resolvedId) : "",
     email: rawUser.email,
     fullName: rawUser.fullName,
-    phone: rawUser.phoneNumber || rawUser.phone || fallbackPhone || "0123456789",
+    phone: rawUser.phoneNumber || rawUser.phone || fallbackPhone || "",
     avatarUrl: normalizeAvatarUrl(rawUser.profile?.avatarUrl),
   };
 };

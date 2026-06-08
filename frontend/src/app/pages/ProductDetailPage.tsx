@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Clock, CheckCircle, Phone, Upload, MessageCircle } from "lucide-react";
 import { useProducts, Product } from "../store/ProductStore";
@@ -9,7 +9,7 @@ import { LanguageToggle } from "../components/LanguageToggle";
 import { useAuth } from "../context/AuthContext";
 import Swal from "sweetalert2";
 import { useNotification } from "../../context/NotificationContext";
-import { getApiUrl } from "../../utils/api";
+import { getApiUrl, getAssetUrl } from "../../utils/api";
 import { ProductReviewsSection } from "../components/ProductReviewsSection";
 
 export function ProductDetailPage() {
@@ -78,7 +78,7 @@ export function ProductDetailPage() {
           price: editFormData.price,
           condition: editFormData.condition,
           availableTimeSlots: editFormData.availableTimeSlots,
-          image: updatedProductInfo.image || editFormData.image,
+          image: getAssetUrl(updatedProductInfo.image) || editFormData.image,
         };
         updateProduct(product.id, updates);
         setProduct({ ...product, ...updates, image: updates.image });
@@ -139,7 +139,7 @@ export function ProductDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#FF5C00]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#EE4D2D]"></div>
       </div>
     );
   }
@@ -149,7 +149,7 @@ export function ProductDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">{errorMessage || t.productNotFound}</h2>
-          <Link to="/" className="text-[#FF5C00] hover:underline">
+          <Link to="/" className="text-[#EE4D2D] hover:underline">
             {t.goHome}
           </Link>
         </div>
@@ -273,15 +273,21 @@ export function ProductDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: "#F5F5F5" }}>
       {/* Header */}
-      <header className="bg-[#FF5C00] px-6 py-4 shadow-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2 text-white hover:opacity-80">
+      <header style={{ backgroundColor: "#EE4D2D" }} className="sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-white hover:text-yellow-200 transition-colors">
             <ArrowLeft className="w-5 h-5" />
-            <span>{t.back}</span>
+            <span className="text-sm font-medium">Quay lại</span>
           </Link>
-          <LanguageToggle />
+          <span className="text-white/40">|</span>
+          <span className="text-white text-sm font-bold">
+            Hust<span className="text-yellow-300">Trade</span>
+          </span>
+          <div className="ml-auto">
+            <LanguageToggle />
+          </div>
         </div>
       </header>
 
@@ -298,8 +304,21 @@ export function ProductDetailPage() {
                 />
               </div>
               <div className="p-6">
-                <div className="text-[#FF5C00] text-3xl font-bold mb-4">
-                  {product.price.toLocaleString("vi-VN")} đ
+                {/* Price section */}
+                <div className="flex items-center gap-3 flex-wrap mb-4">
+                  <span className="text-[#EE4D2D] text-3xl font-bold">
+                    {product.price.toLocaleString("vi-VN")}đ
+                  </span>
+                  {(product.originalPrice ?? 0) > product.price && (
+                    <>
+                      <span className="text-gray-400 text-lg line-through">
+                        {product.originalPrice!.toLocaleString("vi-VN")}đ
+                      </span>
+                      <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded">
+                        -{product.discountPercent}%
+                      </span>
+                    </>
+                  )}
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-4">
                   {lang === "ja" && product.titleJa ? product.titleJa : product.title}
@@ -344,7 +363,7 @@ export function ProductDetailPage() {
             {/* Available Time Slots */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[#FF5C00]" />
+                <Clock className="w-5 h-5 text-[#EE4D2D]" />
                 {t.availableSlots}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -568,7 +587,7 @@ export function ProductDetailPage() {
                       setIsModalOpen(true);
                     }
                   }}
-                  className="w-full bg-[#FF5C00] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#E65100] transition-colors"
+                  className="w-full bg-[#EE4D2D] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#E65100] transition-colors"
                 >
                   {product.quantity && product.quantity > 0 ? "Mua ngay" : t.bookNow}
                 </button>
@@ -576,7 +595,7 @@ export function ProductDetailPage() {
               {!isSeller && sellerId && (
                 <button
                   onClick={handleContactSeller}
-                  className="mt-3 w-full border border-[#FF5C00] text-[#FF5C00] px-6 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors flex items-center justify-center gap-2"
+                  className="mt-3 w-full border border-[#EE4D2D] text-[#EE4D2D] px-6 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors flex items-center justify-center gap-2"
                 >
                   <MessageCircle className="w-5 h-5" />
                   Nhắn tin người bán
@@ -604,7 +623,7 @@ export function ProductDetailPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm</label>
                 <input
                   type="text"
-                  className="w-full border rounded p-2 focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                  className="w-full border rounded p-2 focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                   value={editFormData.title}
                   onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
                 />
@@ -613,7 +632,7 @@ export function ProductDetailPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
                 <textarea
-                  className="w-full border rounded p-2 focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                  className="w-full border rounded p-2 focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                   rows={4}
                   value={editFormData.description}
                   onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
@@ -625,7 +644,7 @@ export function ProductDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Giá</label>
                   <input
                     type="number"
-                    className="w-full border rounded p-2 focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                    className="w-full border rounded p-2 focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                     value={editFormData.price}
                     onChange={(e) => setEditFormData({ ...editFormData, price: Number(e.target.value) })}
                   />
@@ -633,7 +652,7 @@ export function ProductDetailPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tình trạng</label>
                   <select
-                    className="w-full border rounded p-2 focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                    className="w-full border rounded p-2 focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                     value={editFormData.condition}
                     onChange={(e) => setEditFormData({ ...editFormData, condition: e.target.value })}
                   >
@@ -652,7 +671,7 @@ export function ProductDetailPage() {
                       <input
                         type="text"
                         placeholder="Thứ (VD: Thứ 2, CN...)"
-                        className="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                        className="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                         value={slot.day}
                         onChange={(e) => {
                           const newSlots = [...editFormData.availableTimeSlots];
@@ -663,7 +682,7 @@ export function ProductDetailPage() {
                       <input
                         type="text"
                         placeholder="Giờ (VD: 09:00 - 11:00)"
-                        className="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-[#FF5C00] outline-none"
+                        className="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                         value={slot.time}
                         onChange={(e) => {
                           const newSlots = [...editFormData.availableTimeSlots];
@@ -690,7 +709,7 @@ export function ProductDetailPage() {
                         availableTimeSlots: [...editFormData.availableTimeSlots, { day: '', time: '' }]
                       });
                     }}
-                    className="text-sm text-[#FF5C00] hover:underline"
+                    className="text-sm text-[#EE4D2D] hover:underline"
                   >
                     + Thêm khung giờ
                   </button>
@@ -703,7 +722,7 @@ export function ProductDetailPage() {
                   <button
                     type="button"
                     onClick={() => document.getElementById('edit-product-image')?.click()}
-                    className="flex items-center justify-center w-12 h-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#FF5C00] hover:text-[#FF5C00] text-gray-500 transition-colors"
+                    className="flex items-center justify-center w-12 h-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#EE4D2D] hover:text-[#EE4D2D] text-gray-500 transition-colors"
                   >
                     <Upload className="w-5 h-5" />
                   </button>
@@ -743,7 +762,7 @@ export function ProductDetailPage() {
                 </button>
                 <button
                   onClick={handleUpdateProduct}
-                  className="px-4 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E65100]"
+                  className="px-4 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E65100]"
                 >
                   Lưu thay đổi
                 </button>

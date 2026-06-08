@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+﻿import { useState, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Store } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -64,99 +64,91 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Simple Header */}
-      <header className="bg-[#FF5C00] px-6 py-4 shadow-md">
-        <div className="max-w-7xl mx-auto">
-          <Link to="/" className="flex items-center gap-2 text-white hover:opacity-90 transition-opacity w-fit">
-            <Store className="w-8 h-8" />
-            <h1 className="text-2xl font-bold">{t.appName}</h1>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F5F5F5" }}>
+      {/* Header */}
+      <header style={{ backgroundColor: "#EE4D2D" }}>
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <Link to="/" className="inline-block">
+            <span className="text-white text-xl font-black">
+              Hust<span className="text-yellow-300">Trade</span>
+            </span>
           </Link>
         </div>
       </header>
 
       {/* Register Form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="bg-white rounded-xl shadow-2xl border border-gray-100 p-8 w-full max-w-md">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">{t.registerTitle}</h2>
+      <div className="flex-1 flex items-center justify-center px-4 py-10">
+        <div className="bg-white rounded-sm shadow-md p-8 w-full max-w-md">
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">{t.registerTitle}</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.fullNameLabel}
-              </label>
+              <label className="block text-sm text-gray-600 mb-1.5">{t.fullNameLabel}</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder={t.fullNamePlaceholder}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-sm text-sm outline-none focus:border-[#EE4D2D] transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.emailLabel}
-              </label>
+              <label className="block text-sm text-gray-600 mb-1.5">{t.emailLabel}</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.emailPlaceholder}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-sm text-sm outline-none focus:border-[#EE4D2D] transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.phoneLabel}
-              </label>
+              <label className="block text-sm text-gray-600 mb-1.5">{t.phoneLabel}</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder={t.phonePlaceholder}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-sm text-sm outline-none focus:border-[#EE4D2D] transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.passwordLabel}
-              </label>
+              <label className="block text-sm text-gray-600 mb-1.5">{t.passwordLabel}</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t.passwordPlaceholder}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-sm text-sm outline-none focus:border-[#EE4D2D] transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Xác nhận mật khẩu
-              </label>
+              <label className="block text-sm text-gray-600 mb-1.5">Xác nhận mật khẩu</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Nhập lại mật khẩu"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-sm text-sm outline-none focus:border-[#EE4D2D] transition-colors"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full text-white py-3 rounded-lg transition-all font-medium bg-[#FF5C00] hover:bg-[#E54F00] active:scale-[0.98] active:bg-[#CC4A00] shadow-md hover:shadow-lg mt-2"
+              className="w-full text-white py-3 rounded-sm font-medium transition-opacity hover:opacity-90 mt-2"
+              style={{ backgroundColor: "#EE4D2D" }}
             >
               {t.registerButton}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-5 text-center text-sm text-gray-500">
             {t.hasAccount}{" "}
-            <Link to="/login" className="text-[#FF5C00] hover:underline font-medium">
+            <Link to="/login" className="font-medium hover:underline" style={{ color: "#EE4D2D" }}>
               {t.loginNow}
             </Link>
           </div>
