@@ -29,7 +29,7 @@ exports.protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const currentUser = await User.findById(decoded.id).select('+password');
+    const currentUser = await User.findById(decoded.id);
 
     if (!currentUser) {
       return res.status(401).json({
@@ -78,7 +78,7 @@ exports.optionalProtect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const currentUser = await User.findById(decoded.id).select('+password');
+    const currentUser = await User.findById(decoded.id);
 
     if (
       currentUser &&

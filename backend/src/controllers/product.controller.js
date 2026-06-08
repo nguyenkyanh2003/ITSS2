@@ -4,7 +4,7 @@ const Product = require('../models/product.model');
 const User = require('../models/user.model');
 const Order = require('../models/Order');
 const Review = require('../models/Review');
-const { CAMPUS_LOCATION_IDS } = require('../constants/locations');
+const { normalizeLocationId } = require('../utils/location');
 const { buildRelativeFileUrl, getPublicBaseUrl, normalizeMediaUrl } = require('../utils/media');
 const { uploadToCloudinaryIfConfigured } = require('../utils/cloudinaryUpload');
 
@@ -57,15 +57,6 @@ const parseMaybeJson = (value) => {
   } catch (error) {
     return value;
   }
-};
-
-const normalizeLocationId = (value) => {
-  if (value === undefined || value === null || value === '') {
-    return null;
-  }
-
-  const normalized = String(value).trim();
-  return CAMPUS_LOCATION_IDS.has(normalized) ? normalized : null;
 };
 
 const appendOrConditions = (filter, conditions) => {
@@ -162,9 +153,8 @@ const buildProductResponse = (product, baseUrl = null, options = {}) => ({
   productStatus: product.productStatus,
   purchaseDate: product.purchaseDate,
   usageLevel: product.usageLevel,
-  videoUrl: product.videoUrl,
+  videoUrl: normalizeMediaUrl(product.videoUrl, baseUrl) || null,
   isFeatured: product.isFeatured,
-  // Map internal status to frontend-friendly status keys
   status: product.status === 'available' ? 'in-stock' : product.status,
   location: product.location,
   meetingSpots: product.meetingSpots,
@@ -175,8 +165,6 @@ const buildProductResponse = (product, baseUrl = null, options = {}) => ({
     ? product.images.map((img) => buildImageResponse(img, baseUrl))
     : product.images,
   image: normalizeMediaUrl((product.images && product.images.length) ? getImageUrl(product.images[0]) : null, baseUrl),
-  // normalize video url too
-  videoUrl: normalizeMediaUrl(product.videoUrl, baseUrl) || null,
   seller: buildSellerResponse(product.seller, baseUrl),
   viewCount: product.viewCount,
   createdAt: product.createdAt,
@@ -602,6 +590,33 @@ exports.updateProduct = async (req, res) => {
     }
 
     const updates = pickUpdateFields(req.body, { isAdmin, allowStatus: isOwner });
+
+    // Handle newly uploaded image files (requires maybeUploadProductImages middleware on route)
+    let uploadedFiles = [];
+    if (!req.files) {
+      uploadedFiles = [];
+    } else if (Array.isArray(req.files)) {
+      uploadedFiles = req.files;
+    } else if (typeof req.files === 'object') {
+      uploadedFiles = Object.values(req.files).flat();
+    }
+
+    const uploadedImageFiles = uploadedFiles.filter((f) => f && f.fieldname === 'images');
+    if (uploadedImageFiles.length > 0) {
+      const newImages = await Promise.all(
+        uploadedImageFiles.map(async (file) => {
+          const cloudinaryFile = await uploadToCloudinaryIfConfigured(file, 'husttrade/products');
+          return {
+            url: cloudinaryFile?.url || buildImageUrl(req, file.path),
+            publicId: cloudinaryFile?.publicId,
+            alt: file.originalname || 'product-image',
+          };
+        })
+      );
+      // Append new images to existing ones (max 6 total)
+      const existingImages = Array.isArray(product.images) ? product.images : [];
+      updates.images = [...existingImages, ...newImages].slice(0, 6);
+    }
 
     const newPrice = updates.price !== undefined ? updates.price : product.price;
     const newOriginalPrice = updates.originalPrice !== undefined ? updates.originalPrice : product.originalPrice;

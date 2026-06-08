@@ -24,7 +24,7 @@ router.post('/:id/reserve', protect, productController.reserveProduct);
 router.post('/:id/reschedule', protect, productController.rescheduleProduct);
 router.post('/:id/images', protect, uploadProductImages, productController.addProductImages);
 router.post('/', protect, maybeUploadProductImages, productController.createProduct);
-router.patch('/:id', protect, productController.updateProduct);
+router.patch('/:id', protect, maybeUploadProductImages, productController.updateProduct);
 router.delete('/:id', protect, productController.deleteProduct);
 
 module.exports = router;

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/product.model');
 const User = require('../models/user.model');
-const { CAMPUS_LOCATION_IDS } = require('../constants/locations');
+const { normalizeLocationId } = require('../utils/location');
 
 const buildOrderResponse = (order) => ({
   id: order._id,
@@ -27,15 +27,6 @@ const ensureParticipant = (order, userId) => {
   const buyerId = order.buyer?.toString();
   const sellerId = order.seller?.toString();
   return buyerId === userId || sellerId === userId;
-};
-
-const normalizeLocationId = (value) => {
-  if (value === undefined || value === null || value === '') {
-    return null;
-  }
-
-  const normalized = String(value).trim();
-  return CAMPUS_LOCATION_IDS.has(normalized) ? normalized : null;
 };
 
 const normalizeTimeSlot = (slot) => {
@@ -335,8 +326,11 @@ exports.createOrder = async (req, res) => {
 exports.getMyOrders = async (req, res) => {
   try {
     const role = String(req.query.role || '').toLowerCase();
-    const filter = {};
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Number.parseInt(req.query.limit, 10) || 20, 100);
+    const skip = (page - 1) * limit;
 
+    const filter = {};
     if (role === 'buyer') {
       filter.buyer = req.user._id;
     } else if (role === 'seller') {
@@ -345,15 +339,25 @@ exports.getMyOrders = async (req, res) => {
       filter.$or = [{ buyer: req.user._id }, { seller: req.user._id }];
     }
 
-    const orders = await Order.find(filter)
-      .sort({ updatedAt: -1 })
-      .limit(50)
-      .populate('items.product', 'title price images category productStatus status')
-      .populate('seller', 'fullName')
-      .populate('buyer', 'fullName');
+    const [orders, total] = await Promise.all([
+      Order.find(filter)
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('items.product', 'title price images category productStatus status')
+        .populate('seller', 'fullName')
+        .populate('buyer', 'fullName'),
+      Order.countDocuments(filter),
+    ]);
 
     res.status(200).json({
       success: true,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
       data: {
         orders: orders.map((order) => buildOrderResponse(order)),
       },
@@ -755,6 +759,8 @@ exports.cancelOrder = async (req, res) => {
   }
 };
 
+const ALLOWED_SELLER_STATUSES = new Set(['scheduling', 'pending', 'cancelled']);
+
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -764,6 +770,13 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: 'ID đơn hàng không hợp lệ.' });
     }
 
+    if (!status || !ALLOWED_SELLER_STATUSES.has(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Trạng thái không hợp lệ. Cho phép: ${[...ALLOWED_SELLER_STATUSES].join(', ')}.`,
+      });
+    }
+
     const order = await Order.findById(id);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng.' });
@@ -771,6 +784,10 @@ exports.updateOrderStatus = async (req, res) => {
 
     if (order.seller.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Chỉ người bán mới được cập nhật trạng thái đơn hàng.' });
+    }
+
+    if (order.status === 'completed' || order.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Không thể thay đổi trạng thái đơn hàng đã hoàn tất hoặc đã hủy.' });
     }
 
     order.status = status;

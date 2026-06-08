@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -43,7 +43,7 @@ export function CheckoutPage() {
         <h2 className="text-xl font-semibold text-gray-700 mb-2">Giỏ hàng của bạn đang trống</h2>
         <button
           onClick={() => navigate("/")}
-          className="text-[#FF5C00] hover:underline"
+          className="text-[#EE4D2D] hover:underline"
         >
           Quay lại trang chủ để mua sắm
         </button>
@@ -122,7 +122,7 @@ export function CheckoutPage() {
             {/* Điểm hẹn */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
               <div className="flex items-center mb-4">
-                <MapPin className="w-5 h-5 text-[#FF5C00] mr-2" />
+                <MapPin className="w-5 h-5 text-[#EE4D2D] mr-2" />
                 <h2 className="text-lg font-semibold">Địa điểm nhận hàng</h2>
               </div>
               
@@ -137,7 +137,7 @@ export function CheckoutPage() {
                       setMeetingLocationId(e.target.value);
                       if (e.target.value) setMeetingSpot("");
                     }}
-                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-[#FF5C00] focus:border-[#FF5C00]"
+                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-[#EE4D2D] focus:border-[#EE4D2D]"
                   >
                     <option value="">-- Chọn địa điểm --</option>
                     {CAMPUS_LOCATIONS.map(loc => (
@@ -158,7 +158,7 @@ export function CheckoutPage() {
                       if (e.target.value) setMeetingLocationId("");
                     }}
                     placeholder="VD: Cửa phòng trọ 101, Tòa B1..."
-                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-[#FF5C00] focus:border-[#FF5C00]"
+                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-[#EE4D2D] focus:border-[#EE4D2D]"
                     disabled={!!meetingLocationId}
                   />
                 </div>
@@ -168,14 +168,14 @@ export function CheckoutPage() {
             {/* Khung giờ rảnh */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
               <div className="flex items-center mb-4">
-                <Clock className="w-5 h-5 text-[#FF5C00] mr-2" />
+                <Clock className="w-5 h-5 text-[#EE4D2D] mr-2" />
                 <h2 className="text-lg font-semibold">Thời gian có thể nhận hàng</h2>
               </div>
               <textarea
                 value={availableTimeSlots}
                 onChange={(e) => setAvailableTimeSlots(e.target.value)}
                 placeholder="VD: Chiều thứ 2 (14h-16h) hoặc Sáng thứ 4..."
-                className="w-full border border-gray-300 rounded-md p-3 h-24 focus:ring-[#FF5C00] focus:border-[#FF5C00]"
+                className="w-full border border-gray-300 rounded-md p-3 h-24 focus:ring-[#EE4D2D] focus:border-[#EE4D2D]"
               ></textarea>
               <p className="text-sm text-gray-500 mt-2">Người bán sẽ tham khảo khung giờ này để hẹn giao dịch với bạn.</p>
             </div>
@@ -183,7 +183,7 @@ export function CheckoutPage() {
             {/* Phương thức thanh toán */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
               <div className="flex items-center mb-4">
-                <CreditCard className="w-5 h-5 text-[#FF5C00] mr-2" />
+                <CreditCard className="w-5 h-5 text-[#EE4D2D] mr-2" />
                 <h2 className="text-lg font-semibold">Phương thức thanh toán</h2>
               </div>
               <div className="space-y-3">
@@ -194,7 +194,7 @@ export function CheckoutPage() {
                     value="COD"
                     checked={paymentMethod === "COD"}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-4 h-4 text-[#FF5C00] focus:ring-[#FF5C00]"
+                    className="w-4 h-4 text-[#EE4D2D] focus:ring-[#EE4D2D]"
                   />
                   <span className="ml-3 font-medium">Tiền mặt khi nhận hàng (COD)</span>
                 </label>
@@ -205,7 +205,7 @@ export function CheckoutPage() {
                     value="TRANSFER"
                     checked={paymentMethod === "TRANSFER"}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-4 h-4 text-[#FF5C00] focus:ring-[#FF5C00]"
+                    className="w-4 h-4 text-[#EE4D2D] focus:ring-[#EE4D2D]"
                   />
                   <span className="ml-3 font-medium">Chuyển khoản ngân hàng</span>
                 </label>
@@ -232,7 +232,7 @@ export function CheckoutPage() {
                     <div className="flex-1">
                       <h3 className="text-sm font-medium text-gray-900 line-clamp-2">{item.title}</h3>
                       <div className="text-sm text-gray-500 mt-1">SL: {item.quantity}</div>
-                      <div className="text-sm font-semibold text-[#FF5C00]">
+                      <div className="text-sm font-semibold text-[#EE4D2D]">
                         {(item.price * item.quantity).toLocaleString("vi-VN")} đ
                       </div>
                     </div>
@@ -251,7 +251,7 @@ export function CheckoutPage() {
                 </div>
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-base font-bold text-gray-900">Tổng cộng</span>
-                  <span className="text-xl font-bold text-[#FF5C00]">
+                  <span className="text-xl font-bold text-[#EE4D2D]">
                     {totalPrice.toLocaleString("vi-VN")} đ
                   </span>
                 </div>
@@ -260,7 +260,7 @@ export function CheckoutPage() {
               <button
                 onClick={handlePlaceOrder}
                 disabled={isSubmitting}
-                className="w-full bg-[#FF5C00] text-white py-3 rounded-lg font-semibold hover:bg-[#e65300] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="w-full bg-[#EE4D2D] text-white py-3 rounded-lg font-semibold hover:bg-[#e65300] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Đang xử lý..." : "Đặt hàng"}
               </button>

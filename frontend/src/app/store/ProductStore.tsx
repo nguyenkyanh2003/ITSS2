@@ -11,6 +11,8 @@ export interface Product {
   title: string;
   titleJa?: string;
   price: number;
+  originalPrice?: number;
+  discountPercent?: number;
   stock?: number;
   quantity?: number;
   description: string;
@@ -157,6 +159,8 @@ const mapBackendToFrontendProduct = (bp: any): Product => {
     title: bp.title,
     titleJa: bp.title, // or fallback
     price: bp.price,
+    originalPrice: typeof bp.originalPrice === 'number' ? bp.originalPrice : undefined,
+    discountPercent: typeof bp.discountPercent === 'number' ? bp.discountPercent : undefined,
     stock: typeof bp.stock === 'number' ? bp.stock : undefined,
     quantity: typeof bp.quantity === 'number' ? bp.quantity : (typeof bp.stock === 'number' ? bp.stock : undefined),
     description: bp.description,

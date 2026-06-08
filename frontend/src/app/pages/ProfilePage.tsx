@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef, type ChangeEvent } from "react";
+﻿import { useState, useMemo, useEffect, useCallback, useRef, type ChangeEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ArrowLeft, User as UserIcon, Star, CheckCircle, Package, ShoppingBag, Store, X, Camera, MessageCircle, KeyRound } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -652,7 +652,7 @@ export function ProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-12 relative">
       {/* Header */}
-      <header className="bg-[#FF5C00] px-6 py-4 shadow-md">
+      <header className="bg-[#EE4D2D] px-6 py-4 shadow-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2 text-white hover:opacity-80">
             <ArrowLeft className="w-5 h-5" />
@@ -668,7 +668,7 @@ export function ProfilePage() {
             >
               <MessageCircle className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-white text-[#FF5C00] text-xs font-bold flex items-center justify-center">
+                <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-white text-[#EE4D2D] text-xs font-bold flex items-center justify-center">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
@@ -715,7 +715,7 @@ export function ProfilePage() {
               </div>
               <button 
                 onClick={openEditModal}
-                className="w-full mt-6 px-4 py-2 border border-[#FF5C00] text-[#FF5C00] rounded-lg hover:bg-orange-50 font-medium transition-colors"
+                className="w-full mt-6 px-4 py-2 border border-[#EE4D2D] text-[#EE4D2D] rounded-lg hover:bg-orange-50 font-medium transition-colors"
               >
                 {t.editProfile}
               </button>
@@ -726,7 +726,7 @@ export function ProfilePage() {
                 <MessageCircle className="w-4 h-4" />
                 <span>Tin nhắn</span>
                 {unreadCount > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#FF5C00] text-white text-xs flex items-center justify-center">
+                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#EE4D2D] text-white text-xs flex items-center justify-center">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
@@ -764,7 +764,7 @@ export function ProfilePage() {
                   onClick={() => setActiveTab("listings")}
                   className={`flex-1 py-4 px-6 text-center font-medium flex items-center justify-center gap-2 transition-colors ${
                     activeTab === "listings"
-                      ? "text-[#FF5C00] border-b-2 border-[#FF5C00]"
+                      ? "text-[#EE4D2D] border-b-2 border-[#EE4D2D]"
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
@@ -775,7 +775,7 @@ export function ProfilePage() {
                   onClick={() => { setActiveTab("purchases"); loadOrders(); }}
                   className={`flex-1 py-4 px-6 text-center font-medium flex items-center justify-center gap-2 transition-colors ${
                     activeTab === "purchases"
-                      ? "text-[#FF5C00] border-b-2 border-[#FF5C00]"
+                      ? "text-[#EE4D2D] border-b-2 border-[#EE4D2D]"
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
@@ -786,7 +786,7 @@ export function ProfilePage() {
                   onClick={() => { setActiveTab("sales"); loadOrders(); }}
                   className={`flex-1 py-4 px-6 text-center font-medium flex items-center justify-center gap-2 transition-colors ${
                     activeTab === "sales"
-                      ? "text-[#FF5C00] border-b-2 border-[#FF5C00]"
+                      ? "text-[#EE4D2D] border-b-2 border-[#EE4D2D]"
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
@@ -808,7 +808,7 @@ export function ProfilePage() {
                           <Link
                             key={product.id}
                             to={`/product/${product.id}`}
-                            className="border border-gray-200 rounded-lg overflow-hidden group hover:border-[#FF5C00] transition-colors"
+                            className="border border-gray-200 rounded-lg overflow-hidden group hover:border-[#EE4D2D] transition-colors"
                           >
                             <div className="aspect-video bg-gray-100 relative">
                               <ImageWithFallback
@@ -827,7 +827,7 @@ export function ProfilePage() {
                               )}
                             </div>
                             <div className="p-4">
-                              <div className="font-bold text-[#FF5C00] mb-1">
+                              <div className="font-bold text-[#EE4D2D] mb-1">
                                 {product.price.toLocaleString("vi-VN")} đ
                               </div>
                               <h3 className="text-gray-900 text-sm line-clamp-2">
@@ -857,8 +857,8 @@ export function ProfilePage() {
                           onClick={() => setOrderStatusTab(tab.id as any)}
                           className={`whitespace-nowrap px-6 py-3 font-medium transition-colors border-b-2 ${
                             orderStatusTab === tab.id
-                              ? "border-[#FF5C00] text-[#FF5C00]"
-                              : "border-transparent text-gray-600 hover:text-[#FF5C00]"
+                              ? "border-[#EE4D2D] text-[#EE4D2D]"
+                              : "border-transparent text-gray-600 hover:text-[#EE4D2D]"
                           }`}
                         >
                           {tab.label}
@@ -870,7 +870,7 @@ export function ProfilePage() {
                     <div className="space-y-4">
                       {isOrdersLoading ? (
                         <div className="text-center py-12 text-gray-500 flex flex-col items-center justify-center gap-2">
-                          <div className="w-8 h-8 border-4 border-[#FF5C00] border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-8 h-8 border-4 border-[#EE4D2D] border-t-transparent rounded-full animate-spin"></div>
                           <p>Đang tải đơn hàng...</p>
                         </div>
                       ) : ordersError ? (
@@ -896,7 +896,7 @@ export function ProfilePage() {
                                 <Store className="w-5 h-5 text-gray-500" />
                                 {activeTab === "purchases" ? order.sellerName : order.buyerName}
                               </div>
-                              <div className="text-[#FF5C00] text-sm font-medium uppercase">
+                              <div className="text-[#EE4D2D] text-sm font-medium uppercase">
                                 {order.statusText}
                               </div>
                             </div>
@@ -915,7 +915,7 @@ export function ProfilePage() {
                                     <p className="text-gray-500 text-sm mt-1">Phân loại: {item.variant}</p>
                                     <div className="text-gray-700 text-sm mt-1">x{item.quantity}</div>
                                   </div>
-                                  <div className="text-[#FF5C00] font-medium">
+                                  <div className="text-[#EE4D2D] font-medium">
                                     {item.price.toLocaleString("vi-VN")} đ
                                   </div>
                                 </div>
@@ -925,7 +925,7 @@ export function ProfilePage() {
                             {/* Card Footer */}
                             <div className="bg-gray-50 p-4 rounded-b-lg border-t border-gray-100 flex flex-col sm:flex-row justify-end items-end sm:items-center gap-4">
                               <div className="text-gray-900 mr-auto sm:mr-0">
-                                Thành tiền: <span className="text-xl font-bold text-[#FF5C00] ml-2">{order.totalAmount.toLocaleString("vi-VN")} đ</span>
+                                Thành tiền: <span className="text-xl font-bold text-[#EE4D2D] ml-2">{order.totalAmount.toLocaleString("vi-VN")} đ</span>
                               </div>
                               <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                                 {order.status === "delivered" ? (
@@ -939,7 +939,7 @@ export function ProfilePage() {
                                         >
                                           {reviewedOrders.has(order.id) ? "Đã đánh giá" : "Đánh giá"}
                                         </button>
-                                        <button className="flex-1 sm:flex-none px-6 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm">
+                                        <button className="flex-1 sm:flex-none px-6 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm">
                                           Mua lại
                                         </button>
                                       </>
@@ -965,7 +965,7 @@ export function ProfilePage() {
                                         </button>
                                         <button
                                           onClick={() => handleConfirmOrder(order.id)}
-                                          className="w-full sm:w-auto px-6 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
+                                          className="w-full sm:w-auto px-6 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
                                         >
                                           Xác nhận đơn
                                         </button>
@@ -977,14 +977,14 @@ export function ProfilePage() {
                                     {activeTab === "purchases" ? (
                                       <button
                                         onClick={() => handleCompleteOrder(order.id)}
-                                        className="w-full sm:w-auto px-6 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
+                                        className="w-full sm:w-auto px-6 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
                                       >
                                         Đã nhận hàng
                                       </button>
                                     ) : (
                                       <button
                                         onClick={() => handleCompleteOrder(order.id)}
-                                        className="w-full sm:w-auto px-6 py-2 bg-[#FF5C00] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
+                                        className="w-full sm:w-auto px-6 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
                                       >
                                         Đã giao hàng
                                       </button>
@@ -1069,7 +1069,7 @@ export function ProfilePage() {
                   type="text"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EE4D2D] focus:border-[#EE4D2D] outline-none transition-all"
                 />
               </div>
 
@@ -1079,7 +1079,7 @@ export function ProfilePage() {
                   type="tel"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EE4D2D] focus:border-[#EE4D2D] outline-none transition-all"
                 />
               </div>
 
@@ -1095,7 +1095,7 @@ export function ProfilePage() {
 
               <div className="pt-4 border-t border-gray-100 space-y-4">
                 <div className="flex items-center gap-2 text-gray-900 font-semibold">
-                  <KeyRound className="w-5 h-5 text-[#FF5C00]" />
+                  <KeyRound className="w-5 h-5 text-[#EE4D2D]" />
                   <span>Đổi mật khẩu</span>
                 </div>
 
@@ -1105,7 +1105,7 @@ export function ProfilePage() {
                     type="password"
                     value={currentPassword}
                     onChange={e => setCurrentPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EE4D2D] focus:border-[#EE4D2D] outline-none transition-all"
                   />
                 </div>
 
@@ -1115,7 +1115,7 @@ export function ProfilePage() {
                     type="password"
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EE4D2D] focus:border-[#EE4D2D] outline-none transition-all"
                   />
                 </div>
 
@@ -1125,7 +1125,7 @@ export function ProfilePage() {
                     type="password"
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EE4D2D] focus:border-[#EE4D2D] outline-none transition-all"
                   />
                 </div>
 
@@ -1150,7 +1150,7 @@ export function ProfilePage() {
               </button>
               <button
                 onClick={handleSaveProfile}
-                className="px-6 py-2 bg-[#FF5C00] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
+                className="px-6 py-2 bg-[#EE4D2D] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
               >
                 Lưu thay đổi
               </button>
@@ -1179,7 +1179,7 @@ export function ProfilePage() {
                 {cancelReasons.map((reason) => (
                   <label
                     key={reason}
-                    className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-[#FF5C00] transition-colors"
+                    className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-[#EE4D2D] transition-colors"
                   >
                     <input
                       type="radio"
@@ -1204,7 +1204,7 @@ export function ProfilePage() {
                       onChange={(event) => setCancelReasonOther(event.target.value)}
                       placeholder="Nhập lý do hủy đơn..."
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EE4D2D] focus:border-[#EE4D2D] outline-none transition-all"
                     />
                   </div>
                 )}
@@ -1221,7 +1221,7 @@ export function ProfilePage() {
               </button>
               <button
                 onClick={handleCancelOrder}
-                className="px-6 py-2 bg-[#FF5C00] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm disabled:opacity-60"
+                className="px-6 py-2 bg-[#EE4D2D] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm disabled:opacity-60"
                 disabled={!cancelReason || (cancelReason === "Lý do khác" && !cancelReasonOther.trim()) || isCancellingOrder}
               >
                 {isCancellingOrder ? "Đang hủy..." : "Xác nhận hủy"}
@@ -1286,7 +1286,7 @@ export function ProfilePage() {
                   onChange={(e) => setReviewComment(e.target.value)}
                   placeholder="Chia sẻ trải nghiệm của bạn về người bán và sản phẩm..."
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-all resize-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EE4D2D] focus:border-[#EE4D2D] outline-none transition-all resize-none"
                 />
               </div>
             </div>
@@ -1302,7 +1302,7 @@ export function ProfilePage() {
               <button
                 onClick={handleSubmitReview}
                 disabled={isSubmittingReview}
-                className="px-6 py-2 bg-[#FF5C00] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm disabled:opacity-60"
+                className="px-6 py-2 bg-[#EE4D2D] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm disabled:opacity-60"
               >
                 {isSubmittingReview ? "Đang gửi..." : "Gửi đánh giá"}
               </button>

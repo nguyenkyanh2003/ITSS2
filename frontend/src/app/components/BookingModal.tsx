@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { X } from "lucide-react";
 import { Product } from "../store/ProductStore";
 import { useLanguage } from "../context/LanguageContext";
@@ -58,7 +58,7 @@ export function BookingModal({ product, onClose, onConfirm }: BookingModalProps)
                 setSelectedSpot(e.target.value);
                 if (e.target.value !== "__custom__") setCustomSpot("");
               }}
-              className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent bg-white text-gray-900 border border-gray-200 shadow-lg"
+              className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent bg-white text-gray-900 border border-gray-200 shadow-lg"
             >
               <option value="">{t.selectSpotPlaceholder}</option>
               {CAMPUS_SPOTS.map((spot) => (
@@ -81,7 +81,7 @@ export function BookingModal({ product, onClose, onConfirm }: BookingModalProps)
                 value={customSpot}
                 onChange={(e) => setCustomSpot(e.target.value)}
                 placeholder={t.enterSpotPlaceholder}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
               />
             </div>
           )}
@@ -100,7 +100,7 @@ export function BookingModal({ product, onClose, onConfirm }: BookingModalProps)
                     key={index}
                     className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
                       selectedTime === timeValue
-                        ? "border-[#FF5C00] bg-orange-50"
+                        ? "border-[#EE4D2D] bg-orange-50"
                         : "border-gray-300 hover:border-gray-400"
                     }`}
                   >
@@ -110,7 +110,7 @@ export function BookingModal({ product, onClose, onConfirm }: BookingModalProps)
                       value={timeValue}
                       checked={selectedTime === timeValue}
                       onChange={(e) => setSelectedTime(e.target.value)}
-                      className="w-4 h-4 text-[#FF5C00] focus:ring-[#FF5C00]"
+                      className="w-4 h-4 text-[#EE4D2D] focus:ring-[#EE4D2D]"
                     />
                     <span className="ml-3 flex-1">
                       <span className="font-semibold">{displayDay}</span>
@@ -135,7 +135,7 @@ export function BookingModal({ product, onClose, onConfirm }: BookingModalProps)
               disabled={!canConfirm}
               className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-colors ${
                 canConfirm
-                  ? "bg-[#FF5C00] text-white hover:bg-[#E65100]"
+                  ? "bg-[#EE4D2D] text-white hover:bg-[#E65100]"
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
 import { ArrowLeft, Upload } from "lucide-react";
 import { useProducts } from "../store/ProductStore";
@@ -181,7 +181,7 @@ export function AddProductPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-[#FF5C00] px-6 py-4 shadow-md">
+      <header className="bg-[#EE4D2D] px-6 py-4 shadow-md">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2 text-white hover:opacity-80">
             <ArrowLeft className="w-5 h-5" />
@@ -206,7 +206,7 @@ export function AddProductPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={t.productNamePlaceholder}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
               />
             </div>
 
@@ -220,7 +220,7 @@ export function AddProductPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={t.descriptionPlaceholder}
                 rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
               />
             </div>
 
@@ -235,7 +235,7 @@ export function AddProductPage() {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
                 />
               </div>
 
@@ -250,7 +250,7 @@ export function AddProductPage() {
                   value={stock}
                   onChange={(e) => setStock(e.target.value)}
                   placeholder={t.stockQuantityPlaceholder || "1"}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
                 />
               </div>
 
@@ -261,7 +261,7 @@ export function AddProductPage() {
                 <select
                   value={condition}
                   onChange={(e) => setCondition(e.target.value as any)}
-                  className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent bg-white text-gray-900 border border-gray-200 shadow-lg"
+                  className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent bg-white text-gray-900 border border-gray-200 shadow-lg"
                 >
                   <option value="Mới">{t.conditionNew}</option>
                   <option value="Đã qua sử dụng">{t.conditionUsed}</option>
@@ -277,7 +277,7 @@ export function AddProductPage() {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as any)}
-                className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent bg-white text-gray-900 border border-gray-200 shadow-lg"
+                className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent bg-white text-gray-900 border border-gray-200 shadow-lg"
               >
                 <option value="Điện tử & Công nghệ">{t.catElectronics}</option>
                 <option value="Giáo trình & Sách học">{t.catBooks}</option>
@@ -306,7 +306,7 @@ export function AddProductPage() {
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder={t.imageUrlPlaceholder}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
                 />
               </div>
 
@@ -384,14 +384,14 @@ export function AddProductPage() {
                       value={day}
                       onChange={(e) => setDay(e.target.value)}
                       placeholder={t.dayPlaceholders[i]}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
                     />
                     <input
                       type="text"
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
                       placeholder={t.timePlaceholders[i]}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
                     />
                   </div>
                 ))}
@@ -409,7 +409,7 @@ export function AddProductPage() {
                     key={spot}
                     className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
                       selectedSpots.includes(spot)
-                        ? "border-[#FF5C00] bg-orange-50"
+                        ? "border-[#EE4D2D] bg-orange-50"
                         : "border-gray-300 hover:border-gray-400"
                     }`}
                   >
@@ -417,7 +417,7 @@ export function AddProductPage() {
                       type="checkbox"
                       checked={selectedSpots.includes(spot)}
                       onChange={() => toggleSpot(spot)}
-                      className="w-4 h-4 text-[#FF5C00] focus:ring-[#FF5C00] rounded"
+                      className="w-4 h-4 text-[#EE4D2D] focus:ring-[#EE4D2D] rounded"
                     />
                     <span className="ml-3 text-sm">{spot}</span>
                   </label>
@@ -429,7 +429,7 @@ export function AddProductPage() {
                   value={customSpot}
                   onChange={(e) => setCustomSpot(e.target.value)}
                   placeholder="Hoặc nhập địa điểm khác..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5C00] focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
                 />
               </div>
             </div>
@@ -444,7 +444,7 @@ export function AddProductPage() {
               </Link>
               <button
                 type="submit"
-                className="flex-1 px-6 py-3 bg-[#FF5C00] text-white rounded-lg font-semibold hover:bg-[#E65100] transition-colors"
+                className="flex-1 px-6 py-3 bg-[#EE4D2D] text-white rounded-lg font-semibold hover:bg-[#E65100] transition-colors"
               >
                 {t.submitBtn}
               </button>
