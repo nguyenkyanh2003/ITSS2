@@ -20,6 +20,7 @@ export interface Product {
   condition: string;
   category: string;
   image: string;
+  images: string[];
   distance: string;
   area?: string;
   status?: string;
@@ -170,6 +171,14 @@ const mapBackendToFrontendProduct = (bp: any): Product => {
     // Prefer top-level `image` returned by backend (already normalized),
     // fallback to first image url in `images[]`.
     image: resolveProductImage(bp),
+    images: Array.isArray(bp.images)
+      ? bp.images
+          .map((img: any) => {
+            const url = typeof img === 'string' ? img : img?.url;
+            return getAssetUrl(url) || '';
+          })
+          .filter(Boolean)
+      : (resolveProductImage(bp) ? [resolveProductImage(bp)] : []),
     distance: "100m", // mock distance as it's not strictly calculated
     area: mapArea(bp.location?.campusArea),
     status: bp.status === 'available' || bp.status === 'in-stock'

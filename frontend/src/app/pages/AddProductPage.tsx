@@ -1,6 +1,6 @@
-﻿import { useState } from "react";
+﻿import { useState, useRef } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, X, ImagePlus, Video } from "lucide-react";
 import { useProducts } from "../store/ProductStore";
 import { useLanguage } from "../context/LanguageContext";
 import { LanguageToggle } from "../components/LanguageToggle";
@@ -35,21 +35,38 @@ export function AddProductPage() {
   const [category, setCategory] = useState<
     "Điện tử & Công nghệ" | "Giáo trình & Sách học" | "Đồ dùng phòng trọ" | "Gia dụng & Sinh hoạt" | "Phương tiện di chuyển" | "Quần áo & Thời trang" | "Khác"
   >("Điện tử & Công nghệ");
-  const [imageUrl, setImageUrl] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).slice(0, 6);
-    setImageFiles(files);
-    const urls = files.map((f) => URL.createObjectURL(f));
-    setPreviews(urls);
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles = Array.from(e.target.files || []);
+    setImageFiles((prev) => {
+      const combined = [...prev, ...newFiles].slice(0, 6);
+      setPreviews(combined.map((f) => URL.createObjectURL(f)));
+      return combined;
+    });
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (idx: number) => {
+    setImageFiles((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      setPreviews(next.map((f) => URL.createObjectURL(f)));
+      return next;
+    });
   };
 
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files && e.target.files[0];
-    if (f) setVideoFile(f);
+    if (f) {
+      setVideoFile(f);
+      setVideoPreview(URL.createObjectURL(f));
+    }
+    e.target.value = '';
   };
 
   const [timeSlot1Day, setTimeSlot1Day] = useState("");
@@ -104,73 +121,26 @@ export function AddProductPage() {
       return;
     }
 
-    // If files selected, build FormData and send multipart request via addProduct
-    if (imageFiles.length || videoFile) {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        showNotification(errorTitle, t.errLoginRequired || "Vui lòng đăng nhập", "error");
-        return;
-      }
+    const form = new FormData();
+    form.append('title', title);
+    form.append('description', description);
+    form.append('price', String(Number(price)));
+    form.append('stock', String(parsedStock));
+    form.append('productStatus', condition === 'Mới' ? 'new' : 'used');
+    form.append('category', category);
+    form.append('location', JSON.stringify({ campusArea: CAMPUS_SPOTS[0] }));
+    form.append('meetingSpots', JSON.stringify(finalSpots));
+    form.append('availableTimeSlots', JSON.stringify([
+      { note: `${timeSlot1Day} ${timeSlot1Time}`.trim() || "", day: timeSlot1Day, time: timeSlot1Time },
+      { note: `${timeSlot2Day} ${timeSlot2Time}`.trim() || "", day: timeSlot2Day, time: timeSlot2Time },
+      { note: `${timeSlot3Day} ${timeSlot3Time}`.trim() || "", day: timeSlot3Day, time: timeSlot3Time },
+    ]));
 
-      const form = new FormData();
-      form.append('title', title);
-      form.append('description', description);
-      form.append('price', String(Number(price)));
-      form.append('stock', String(parsedStock));
-      form.append('productStatus', condition === 'Mới' ? 'new' : 'used');
-      form.append('category', category);
-      form.append('location', JSON.stringify({ campusArea: CAMPUS_SPOTS[0] }));
-      form.append('meetingSpots', JSON.stringify(finalSpots));
-      form.append('availableTimeSlots', JSON.stringify([
-        { note: `${timeSlot1Day} ${timeSlot1Time}`.trim() || "", day: timeSlot1Day, time: timeSlot1Time },
-        { note: `${timeSlot2Day} ${timeSlot2Time}`.trim() || "", day: timeSlot2Day, time: timeSlot2Time },
-        { note: `${timeSlot3Day} ${timeSlot3Time}`.trim() || "", day: timeSlot3Day, time: timeSlot3Time },
-      ]));
-
-      imageFiles.forEach((file) => form.append('images', file));
-      if (videoFile) form.append('video', videoFile);
-
-      try {
-        await addProduct(form as any);
-        showNotification(successTitle, t.successPost, "success");
-        navigate('/');
-      } catch (error: any) {
-        showNotification(errorTitle, error.message || "Lỗi thêm sản phẩm", "error");
-      }
-
-      return;
-    }
-
-    const newProduct = {
-      title,
-      description,
-      price: Number(price),
-      stock: parsedStock,
-      condition,
-      category,
-      image: imageUrl.trim(),
-      distance: "100m",
-      seller: {
-        name: "Bạn",
-        avatar:
-          "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
-        rating: 5.0,
-        totalReviews: 0,
-        soldItems: 0,
-        memberSince: "2026",
-        verified: true,
-        phone: "0900000000",
-      },
-      availableTimeSlots: [
-        { day: timeSlot1Day, time: timeSlot1Time },
-        { day: timeSlot2Day, time: timeSlot2Time },
-        { day: timeSlot3Day, time: timeSlot3Time },
-      ],
-      preferredSpots: finalSpots,
-    };
+    imageFiles.forEach((file) => form.append('images', file));
+    if (videoFile) form.append('video', videoFile);
 
     try {
-      await addProduct(newProduct as any);
+      await addProduct(form as any);
       showNotification(successTitle, t.successPost, "success");
       navigate('/');
     } catch (error: any) {
@@ -289,63 +259,93 @@ export function AddProductPage() {
               </select>
             </div>
 
-            {/* Image URL */}
+            {/* Media Upload */}
             <div>
-              <label className="block font-semibold text-gray-900 mb-2">{t.imageUrlLabel}</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('product-images-input')?.click()}
-                  className="mt-2 flex-shrink-0 text-gray-400 hover:text-gray-600"
-                  title={t.uploadImagesLabel || 'Upload ảnh'}
-                >
-                  <Upload className="w-5 h-5" />
-                </button>
-                <input
-                  type="text"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder={t.imageUrlPlaceholder}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
-                />
+              <div className="flex items-center justify-between mb-2">
+                <label className="block font-semibold text-gray-900">
+                  Ảnh sản phẩm
+                </label>
+                <span className="text-sm text-gray-500">{previews.length}/6 ảnh</span>
               </div>
 
-              <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-700">{t.uploadImagesLabel || 'Upload ảnh (tối đa 6)'}</label>
-                <input
-                  id="product-images-input"
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="mt-2"
-                />
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {previews.map((p, idx) => (
-                    <img key={idx} src={p} alt={`preview-${idx}`} className="w-24 h-24 object-cover rounded" />
-                  ))}
-                </div>
-                <div className="mt-4">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-sm font-medium text-gray-700">{t.uploadVideoLabel || 'Upload video (tùy chọn)'}</label>
+              {/* Image grid */}
+              <div className="grid grid-cols-3 gap-3">
+                {previews.map((p, idx) => (
+                  <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50 group">
+                    <img src={p} alt={`ảnh-${idx + 1}`} className="w-full h-full object-cover" />
                     <button
                       type="button"
-                      onClick={() => document.getElementById('product-video-input')?.click()}
-                      className="text-gray-400 hover:text-gray-600"
-                      title={t.uploadVideoLabel || 'Upload video'}
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-0.5 transition-opacity opacity-0 group-hover:opacity-100"
                     >
-                      <Upload className="w-4 h-4" />
+                      <X className="w-4 h-4" />
+                    </button>
+                    {idx === 0 && (
+                      <span className="absolute bottom-1 left-1 bg-[#EE4D2D] text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
+                        Ảnh bìa
+                      </span>
+                    )}
+                  </div>
+                ))}
+
+                {previews.length < 6 && (
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="aspect-square rounded-lg border-2 border-dashed border-gray-300 hover:border-[#EE4D2D] hover:bg-orange-50 flex flex-col items-center justify-center gap-1 transition-colors text-gray-400 hover:text-[#EE4D2D]"
+                  >
+                    <ImagePlus className="w-8 h-8" />
+                    <span className="text-xs font-medium">Thêm ảnh</span>
+                  </button>
+                )}
+              </div>
+
+              <input
+                ref={imageInputRef}
+                type="file"
+                multiple
+                accept="image/*,.jfif,.jfif-tbnl,.jpe"
+                onChange={handleAddImages}
+                className="hidden"
+              />
+
+              {/* Video upload */}
+              <div className="mt-4">
+                <label className="block font-semibold text-gray-900 mb-2">
+                  Video sản phẩm <span className="text-gray-400 font-normal text-sm">(tùy chọn)</span>
+                </label>
+                {videoFile ? (
+                  <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                    <video
+                      src={videoPreview || undefined}
+                      controls
+                      className="w-full max-h-48 object-contain"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setVideoFile(null); setVideoPreview(null); }}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <input
-                    id="product-video-input"
-                    type="file"
-                    accept="video/*"
-                    onChange={handleVideoChange}
-                    className="mt-2"
-                  />
-                  {videoFile && <div className="mt-2 text-sm text-gray-600">{videoFile.name}</div>}
-                </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => videoInputRef.current?.click()}
+                    className="w-full py-4 rounded-lg border-2 border-dashed border-gray-300 hover:border-[#EE4D2D] hover:bg-orange-50 flex items-center justify-center gap-2 transition-colors text-gray-400 hover:text-[#EE4D2D]"
+                  >
+                    <Video className="w-6 h-6" />
+                    <span className="text-sm font-medium">Thêm video</span>
+                  </button>
+                )}
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoChange}
+                  className="hidden"
+                />
               </div>
             </div>
 

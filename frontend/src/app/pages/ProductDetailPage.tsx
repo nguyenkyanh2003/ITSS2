@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Clock, CheckCircle, Phone, Upload, MessageCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, CheckCircle, Phone, Upload, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useProducts, Product } from "../store/ProductStore";
 import { BookingModal } from "../components/BookingModal";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -36,6 +36,7 @@ export function ProductDetailPage() {
     availableTimeSlots: [] as {day: string, time: string}[],
   });
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
 
   const handleUpdateProduct = async () => {
     if (!product) return;
@@ -296,13 +297,66 @@ export function ProductDetailPage() {
           {/* Left Column - Product Images & Info */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="aspect-[4/3] bg-gray-100">
-                <ImageWithFallback
-                  src={product.image}
-                  alt={product.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              {/* Image gallery */}
+              {(() => {
+                const allImages = product.images && product.images.length > 0
+                  ? product.images
+                  : product.image ? [product.image] : [];
+                const clampedIdx = Math.min(activeImageIdx, allImages.length - 1);
+                return (
+                  <>
+                    {/* Main image */}
+                    <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                      <ImageWithFallback
+                        src={allImages[clampedIdx]}
+                        alt={product.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {allImages.length > 1 && (
+                        <>
+                          <button
+                            onClick={() => setActiveImageIdx((prev) => (prev - 1 + allImages.length) % allImages.length)}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-md transition-colors"
+                          >
+                            <ChevronLeft className="w-5 h-5 text-gray-700" />
+                          </button>
+                          <button
+                            onClick={() => setActiveImageIdx((prev) => (prev + 1) % allImages.length)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-md transition-colors"
+                          >
+                            <ChevronRight className="w-5 h-5 text-gray-700" />
+                          </button>
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full">
+                            {clampedIdx + 1} / {allImages.length}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {/* Thumbnail strip */}
+                    {allImages.length > 1 && (
+                      <div className="flex gap-2 px-4 py-3 bg-white border-t overflow-x-auto">
+                        {allImages.map((imgUrl, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveImageIdx(idx)}
+                            className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-colors ${
+                              idx === clampedIdx
+                                ? 'border-[#EE4D2D]'
+                                : 'border-gray-200 hover:border-gray-400'
+                            }`}
+                          >
+                            <ImageWithFallback
+                              src={imgUrl}
+                              alt={`${product.title} - ảnh ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               <div className="p-6">
                 {/* Price section */}
                 <div className="flex items-center gap-3 flex-wrap mb-4">
