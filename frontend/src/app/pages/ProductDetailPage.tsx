@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Clock, CheckCircle, Phone, Upload, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, CheckCircle, Phone, Upload, MessageCircle, ChevronLeft, ChevronRight, Flag } from "lucide-react";
 import { useProducts, Product } from "../store/ProductStore";
 import { BookingModal } from "../components/BookingModal";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -11,6 +11,7 @@ import Swal from "sweetalert2";
 import { useNotification } from "../../context/NotificationContext";
 import { getApiUrl, getAssetUrl } from "../../utils/api";
 import { ProductReviewsSection } from "../components/ProductReviewsSection";
+import { ReportModal } from "../components/ReportModal";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,10 +20,11 @@ export function ProductDetailPage() {
   const { t, lang } = useLanguage();
   const { isAuthenticated, user } = useAuth();
   const { showNotification } = useNotification();
-  const errorTitle = "Lỗi";
-  const successTitle = "Thành công";
+  const errorTitle = t.errorTitle;
+  const successTitle = t.successTitle;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [product, setProduct] = useState<Product | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export function ProductDetailPage() {
       
       const data = await res.json();
       if (data.success) {
-        showNotification(successTitle, "Cập nhật sản phẩm thành công", "success");
+        showNotification(successTitle, t.successUpdateProduct, "success");
         const updatedProductInfo = data.data?.product || {};
         const updates = {
           title: editFormData.title,
@@ -85,10 +87,10 @@ export function ProductDetailPage() {
         setProduct({ ...product, ...updates, image: updates.image });
         setIsEditModalOpen(false);
       } else {
-        showNotification(errorTitle, data.message || "Lỗi cập nhật sản phẩm", "error");
+        showNotification(errorTitle, data.message || t.errUpdateProduct, "error");
       }
     } catch (error: any) {
-      showNotification(errorTitle, error.message || "Lỗi cập nhật sản phẩm", "error");
+      showNotification(errorTitle, error.message || t.errUpdateProduct, "error");
     }
   };
 
@@ -164,13 +166,13 @@ export function ProductDetailPage() {
 
   const handleContactSeller = async () => {
     if (!sellerId) {
-      showNotification(errorTitle, "Không tìm thấy người bán để liên hệ.", "error");
+      showNotification(errorTitle, t.errNoSellerContact, "error");
       return;
     }
 
     const token = localStorage.getItem("token");
     if (!isAuthenticated || !token) {
-      showNotification(errorTitle, "Vui lòng đăng nhập để nhắn tin người bán.", "error");
+      showNotification(errorTitle, t.errLoginToChat, "error");
       navigate("/login");
       return;
     }
@@ -187,7 +189,7 @@ export function ProductDetailPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Không thể tạo cuộc trò chuyện");
+        throw new Error(data.message || t.errCreateConversation);
       }
 
       navigate(`/chat/${sellerId}`, {
@@ -197,7 +199,7 @@ export function ProductDetailPage() {
         },
       });
     } catch (error: any) {
-      showNotification(errorTitle, error.message || "Không thể liên hệ người bán", "error");
+      showNotification(errorTitle, error.message || t.errContactSeller, "error");
     }
   };
 
@@ -233,7 +235,7 @@ export function ProductDetailPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Lỗi đặt chỗ');
+        throw new Error(data.message || t.errBooking);
       }
 
       if (isReschedule) {
@@ -261,7 +263,7 @@ export function ProductDetailPage() {
         });
       }
       setIsModalOpen(false);
-      showNotification(successTitle, isReschedule ? "Đã đổi lịch hẹn." : "Mua hàng / Đặt lịch hẹn thành công!", "success");
+      showNotification(successTitle, isReschedule ? t.successReschedule : t.bookingSuccess, "success");
       // Notify other parts of the app (e.g., Profile orders) to refresh
       try {
         window.dispatchEvent(new Event('ordersUpdated'));
@@ -269,7 +271,7 @@ export function ProductDetailPage() {
         // ignore in non-browser environments
       }
     } catch (error: any) {
-      showNotification(errorTitle, error.message || "Lỗi đặt chỗ", "error");
+      showNotification(errorTitle, error.message || t.errBooking, "error");
     }
   };
 
@@ -280,7 +282,7 @@ export function ProductDetailPage() {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link to="/" className="inline-flex items-center gap-1.5 text-white hover:text-yellow-200 transition-colors">
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Quay lại</span>
+            <span className="text-sm font-medium">{t.back}</span>
           </Link>
           <span className="text-white/40">|</span>
           <span className="text-white text-sm font-bold">
@@ -427,7 +429,7 @@ export function ProductDetailPage() {
                     className="border border-gray-200 rounded-lg p-3 text-center"
                   >
                     <div className="font-semibold text-gray-900">
-                      {t.days[slot.day] ?? slot.day}
+                      {t.days[slot.day] ?? t.days[slot.day.charAt(0).toUpperCase() + slot.day.slice(1)] ?? slot.day}
                     </div>
                     <div className="text-sm text-gray-600">{slot.time}</div>
                   </div>
@@ -522,19 +524,19 @@ export function ProductDetailPage() {
                     }}
                     className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                   >
-                    Sửa sản phẩm
+                    {t.editProduct}
                   </button>
                   <button
                     onClick={() => {
                       Swal.fire({
-                        title: 'Bạn có chắc chắn?',
-                        text: "Sản phẩm này sẽ bị xóa khỏi hệ thống!",
+                        title: t.deleteConfirmTitle,
+                        text: t.deleteConfirmText,
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: '#d33',
                         cancelButtonColor: '#3085d6',
-                        confirmButtonText: 'Đồng ý',
-                        cancelButtonText: 'Hủy'
+                        confirmButtonText: t.deleteConfirmBtn,
+                        cancelButtonText: t.cancel
                       }).then(async (result) => {
                         if (result.isConfirmed) {
                           try {
@@ -546,21 +548,21 @@ export function ProductDetailPage() {
                             });
                             const data = await res.json();
                             if (data.success) {
-                              showNotification(successTitle, "Xóa sản phẩm thành công", "success");
+                              showNotification(successTitle, t.successDeleteProduct, "success");
                               removeProduct(product.id);
                               navigate('/');
                             } else {
-                              showNotification(errorTitle, data.message || "Lỗi xóa sản phẩm", "error");
+                              showNotification(errorTitle, data.message || t.errDeleteProduct, "error");
                             }
                           } catch (error) {
-                            showNotification(errorTitle, "Lỗi xóa sản phẩm", "error");
+                            showNotification(errorTitle, t.errDeleteProduct, "error");
                           }
                         }
                       });
                     }}
                     className="w-full bg-white text-red-600 border border-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-red-50 transition-colors"
                   >
-                    Xóa sản phẩm
+                    {t.deleteProduct}
                   </button>
                 </div>
               ) : product.booking ? (
@@ -614,14 +616,14 @@ export function ProductDetailPage() {
                     className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors ring-2 ring-blue-300 shadow-lg focus:outline-none"
                     style={{ boxShadow: '0 6px 18px rgba(59,130,246,0.25)' }}
                   >
-                    Đổi lịch hẹn
+                    {t.changeBooking}
                   </button>
                 ) : (
                   <button
                     disabled
                     className="w-full bg-gray-300 text-gray-500 px-6 py-3 rounded-lg font-semibold cursor-not-allowed transition-colors"
                   >
-                    Đã có người đặt
+                    {t.statusTakenBtn}
                   </button>
                 )
               ) : (product.quantity === 0 || product.stock === 0 || product.status === 'sold') ? (
@@ -629,7 +631,7 @@ export function ProductDetailPage() {
                   disabled
                   className="w-full bg-gray-300 text-gray-500 px-6 py-3 rounded-lg font-semibold cursor-not-allowed transition-colors"
                 >
-                  Đã hết hàng
+                  {t.statusOutOfStockBtn}
                 </button>
               ) : (
                 <button
@@ -643,17 +645,33 @@ export function ProductDetailPage() {
                   }}
                   className="w-full bg-[#EE4D2D] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#E65100] transition-colors"
                 >
-                  {product.quantity && product.quantity > 0 ? "Mua ngay" : t.bookNow}
+                  {product.quantity && product.quantity > 0 ? t.buyNow : t.bookNow}
                 </button>
               )}
               {!isSeller && sellerId && (
-                <button
-                  onClick={handleContactSeller}
-                  className="mt-3 w-full border border-[#EE4D2D] text-[#EE4D2D] px-6 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors flex items-center justify-center gap-2"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  Nhắn tin người bán
-                </button>
+                <>
+                  <button
+                    onClick={handleContactSeller}
+                    className="mt-3 w-full border border-[#EE4D2D] text-[#EE4D2D] px-6 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    {t.contactSellerBtn}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        showNotification(errorTitle, t.errLoginToReport, "error");
+                        navigate("/login");
+                        return;
+                      }
+                      setIsReportModalOpen(true);
+                    }}
+                    className="mt-2 w-full border border-gray-300 text-gray-500 px-6 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Flag className="w-4 h-4" />
+                    {t.reportBtn}
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -668,13 +686,22 @@ export function ProductDetailPage() {
         />
       )}
 
+      {isReportModalOpen && (
+        <ReportModal
+          reportedProductId={product.id}
+          reportedUserId={sellerId || undefined}
+          targetName={product.title}
+          onClose={() => setIsReportModalOpen(false)}
+        />
+      )}
+
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Sửa sản phẩm</h2>
+            <h2 className="text-xl font-bold mb-4">{t.editProduct}</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.productNameLabel}</label>
                 <input
                   type="text"
                   className="w-full border rounded p-2 focus:ring-2 focus:ring-[#EE4D2D] outline-none"
@@ -684,7 +711,7 @@ export function ProductDetailPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.descriptionLabel}</label>
                 <textarea
                   className="w-full border rounded p-2 focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                   rows={4}
@@ -695,7 +722,7 @@ export function ProductDetailPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Giá</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.editPriceLabel}</label>
                   <input
                     type="number"
                     className="w-full border rounded p-2 focus:ring-2 focus:ring-[#EE4D2D] outline-none"
@@ -704,27 +731,27 @@ export function ProductDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tình trạng</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.conditionFieldLabel}</label>
                   <select
                     className="w-full border rounded p-2 focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                     value={editFormData.condition}
                     onChange={(e) => setEditFormData({ ...editFormData, condition: e.target.value })}
                   >
-                    <option value="Mới">Mới</option>
-                    <option value="Đã qua sử dụng">Đã qua sử dụng</option>
-                    <option value="Khác">Khác</option>
+                    <option value="Mới">{t.conditionNew}</option>
+                    <option value="Đã qua sử dụng">{t.conditionUsed}</option>
+                    <option value="Khác">{t.catOther}</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Khung giờ có thể gặp</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t.availableSlots}</label>
                 <div className="space-y-2">
                   {editFormData.availableTimeSlots.map((slot, index) => (
                     <div key={index} className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="Thứ (VD: Thứ 2, CN...)"
+                        placeholder={t.dayPlaceholders[0]}
                         className="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                         value={slot.day}
                         onChange={(e) => {
@@ -735,7 +762,7 @@ export function ProductDetailPage() {
                       />
                       <input
                         type="text"
-                        placeholder="Giờ (VD: 09:00 - 11:00)"
+                        placeholder={t.timePlaceholders[0]}
                         className="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-[#EE4D2D] outline-none"
                         value={slot.time}
                         onChange={(e) => {
@@ -750,9 +777,9 @@ export function ProductDetailPage() {
                           setEditFormData({ ...editFormData, availableTimeSlots: newSlots });
                         }}
                         className="p-2 text-red-500 hover:bg-red-50 rounded"
-                        title="Xóa khung giờ"
+                        title={t.removeSlotBtn}
                       >
-                        Xóa
+                        {t.removeSlotBtn}
                       </button>
                     </div>
                   ))}
@@ -765,13 +792,13 @@ export function ProductDetailPage() {
                     }}
                     className="text-sm text-[#EE4D2D] hover:underline"
                   >
-                    + Thêm khung giờ
+                    {t.addSlotBtn}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh mới (Tùy chọn)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.editImageLabel}</label>
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
@@ -801,7 +828,7 @@ export function ProductDetailPage() {
                 </div>
                 {!editImageFile && editFormData.image && (
                   <div className="mt-2 text-sm text-gray-500">
-                    <p>Ảnh hiện tại:</p>
+                    <p>{t.currentImageLabel}</p>
                     <img src={editFormData.image} alt="Current" className="h-20 object-contain rounded mt-1 border" />
                   </div>
                 )}
@@ -812,13 +839,13 @@ export function ProductDetailPage() {
                   onClick={() => setIsEditModalOpen(false)}
                   className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50"
                 >
-                  Hủy
+                  {t.cancel}
                 </button>
                 <button
                   onClick={handleUpdateProduct}
                   className="px-4 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E65100]"
                 >
-                  Lưu thay đổi
+                  {t.saveChangesBtn}
                 </button>
               </div>
             </div>

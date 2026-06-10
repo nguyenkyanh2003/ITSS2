@@ -1,8 +1,9 @@
-﻿import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useLocation, useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Navigate, useLocation, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
+import { useLanguage } from "../context/LanguageContext";
 import { getApiUrl } from "../../utils/api";
 
 interface LocationState {
@@ -24,13 +25,13 @@ export function ChatPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { showNotification } = useNotification();
-  const errorTitle = "Lỗi";
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const state = (location.state || {}) as LocationState;
-  const sellerName = state.sellerName || "Người dùng";
+  const sellerName = state.sellerName || t.defaultUser;
 
   const token = useMemo(() => localStorage.getItem("token"), []);
 
@@ -48,7 +49,7 @@ export function ChatPage() {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-          throw new Error(data.message || "Không thể tải tin nhắn");
+          throw new Error(data.message || t.errLoadMessages);
         }
 
         const items = Array.isArray(data.data?.messages) ? data.data.messages : [];
@@ -62,7 +63,7 @@ export function ChatPage() {
         });
         window.dispatchEvent(new Event("messagesUpdated"));
       } catch (error: any) {
-        showNotification(errorTitle, error.message || "Không thể tải tin nhắn", "error");
+        showNotification(t.errorTitle, error.message || t.errLoadMessages, "error");
       } finally {
         setIsLoading(false);
       }
@@ -88,7 +89,7 @@ export function ChatPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Không thể gửi tin nhắn");
+        throw new Error(data.message || t.errSendMessage);
       }
 
       const message = data.data?.message;
@@ -98,7 +99,7 @@ export function ChatPage() {
       setInput("");
       window.dispatchEvent(new Event("messagesUpdated"));
     } catch (error: any) {
-      showNotification(errorTitle, error.message || "Không thể gửi tin nhắn", "error");
+      showNotification(t.errorTitle, error.message || t.errSendMessage, "error");
     }
   };
 
@@ -110,9 +111,9 @@ export function ChatPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Không tìm thấy hội thoại.</p>
+          <p className="text-gray-600">{t.conversationNotFound}</p>
           <button onClick={() => navigate(-1)} className="text-[#EE4D2D] hover:underline">
-            Quay lại
+            {t.back}
           </button>
         </div>
       </div>
@@ -125,7 +126,7 @@ export function ChatPage() {
         <div className="max-w-4xl mx-auto flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-white hover:opacity-80">
             <ArrowLeft className="w-5 h-5" />
-            <span>Quay lại</span>
+            <span>{t.back}</span>
           </button>
           <div className="text-white font-semibold ml-2">{sellerName}</div>
         </div>
@@ -135,9 +136,9 @@ export function ChatPage() {
         <div className="bg-white rounded-lg shadow-md p-4 min-h-[60vh] flex flex-col">
           <div className="flex-1 space-y-3 overflow-y-auto">
             {isLoading ? (
-              <div className="text-gray-500 text-center py-6">Đang tải tin nhắn...</div>
+              <div className="text-gray-500 text-center py-6">{t.loadingMessages}</div>
             ) : messages.length === 0 ? (
-              <div className="text-gray-500 text-center py-6">Chưa có tin nhắn nào.</div>
+              <div className="text-gray-500 text-center py-6">{t.noMessages}</div>
             ) : (
               messages.map((message) => {
                 const isMine = String(message.sender) === String(user.id);
@@ -163,7 +164,7 @@ export function ChatPage() {
                   handleSend();
                 }
               }}
-              placeholder="Nhập tin nhắn..."
+              placeholder={t.messagePlaceholder}
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent"
             />
             <button

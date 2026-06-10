@@ -3,16 +3,19 @@ import { ProductProvider } from "./store/ProductStore";
 import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import { AppNotificationProvider } from "./context/AppNotificationContext";
 
 export default function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <ProductProvider>
-          <CartProvider>
-            <AppRoutes />
-          </CartProvider>
-        </ProductProvider>
+        <AppNotificationProvider>
+          <ProductProvider>
+            <CartProvider>
+              <AppRoutes />
+            </CartProvider>
+          </ProductProvider>
+        </AppNotificationProvider>
       </AuthProvider>
     </LanguageProvider>
   );

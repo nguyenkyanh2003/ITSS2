@@ -3,6 +3,7 @@ const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
 const User = require('../models/user.model');
 const { getPublicBaseUrl, normalizeMediaUrl } = require('../utils/media');
+const { createNotification } = require('../utils/notification');
 
 const buildMessageResponse = (message) => ({
   id: message._id,
@@ -266,6 +267,15 @@ exports.sendMessage = async (req, res) => {
       receiver: receiver._id,
       content,
     });
+
+    // Notify receiver about new message
+    createNotification(
+      receiver._id,
+      'new_message',
+      'Tin nhắn mới',
+      `${req.user.fullName || 'Ai đó'} đã gửi cho bạn một tin nhắn.`,
+      { senderId: req.user._id, senderName: req.user.fullName }
+    );
 
     const participantIds = [String(req.user._id), String(receiver._id)].sort();
     const participantsKey = getParticipantsKey(req.user._id, receiver._id);
