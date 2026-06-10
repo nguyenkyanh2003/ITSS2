@@ -3,6 +3,13 @@ const Order = require('../models/Order');
 const Product = require('../models/product.model');
 const User = require('../models/user.model');
 const { normalizeLocationId } = require('../utils/location');
+const { createNotification } = require('../utils/notification');
+const {
+  orderCreatedSellerEmail,
+  orderTimeConfirmedEmail,
+  orderCompletedEmail,
+  orderCancelledEmail,
+} = require('../utils/email');
 
 const buildOrderResponse = (order) => ({
   id: order._id,
@@ -288,6 +295,30 @@ exports.createOrder = async (req, res) => {
     // Populate items with product details for response
     await order.populate('items.product', 'title price images');
 
+    // Notify seller about new order (fire-and-forget)
+    const buyer = req.user;
+    const seller = await User.findById(sellerId).select('fullName email');
+    if (seller) {
+      const itemSummary = order.items.map((i) => ({
+        title: i.product?.title || 'Sản phẩm',
+        quantity: i.quantity,
+        price: i.price,
+      }));
+      createNotification(
+        sellerId,
+        'order_created',
+        'Bạn có đơn hàng mới!',
+        `${buyer.fullName} vừa đặt mua hàng của bạn.`,
+        { orderId: order._id }
+      );
+      orderCreatedSellerEmail(seller.email, seller.fullName, {
+        orderId: order._id,
+        buyerName: buyer.fullName,
+        totalPrice: order.totalPrice,
+        items: itemSummary,
+      });
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Đã tạo đơn hàng. Vui lòng chọn lịch hẹn.',
@@ -466,6 +497,14 @@ const handleProposeTimes = async (req, res) => {
   order.timeSlot = undefined;
   await order.save();
 
+  createNotification(
+    order.buyer,
+    'order_time_proposed',
+    'Người bán đề xuất lịch hẹn',
+    'Người bán đã gửi 3 khung giờ giao dịch. Vui lòng chọn khung giờ phù hợp.',
+    { orderId: order._id }
+  );
+
   return res.status(200).json({
     success: true,
     data: {
@@ -552,6 +591,23 @@ const handleConfirmTime = async (req, res) => {
   order.timeSlot = matchedSlot;
   order.status = 'pending';
   await order.save();
+
+  // Notify seller + email both parties
+  createNotification(
+    order.seller,
+    'order_time_confirmed',
+    'Lịch hẹn đã được chốt',
+    'Người mua đã chọn khung giờ giao dịch. Vui lòng chuẩn bị đúng giờ.',
+    { orderId: order._id }
+  );
+
+  const [buyerUser, sellerUser] = await Promise.all([
+    User.findById(order.buyer).select('fullName email'),
+    User.findById(order.seller).select('fullName email'),
+  ]);
+  const emailData = { orderId: order._id, finalTime: matchedSlot, meetingSpot: normalizedLocationId };
+  if (buyerUser) orderTimeConfirmedEmail(buyerUser.email, buyerUser.fullName, emailData);
+  if (sellerUser) orderTimeConfirmedEmail(sellerUser.email, sellerUser.fullName, emailData);
 
   return res.status(200).json({
     success: true,
@@ -648,6 +704,18 @@ exports.completeOrder = async (req, res) => {
       ]);
     }
 
+    // Notify both parties + send emails
+    const emailData = { orderId: order._id, totalPrice: order.totalPrice };
+    const [buyerUser, sellerUser] = await Promise.all([
+      User.findById(order.buyer).select('fullName email'),
+      User.findById(order.seller).select('fullName email'),
+    ]);
+
+    createNotification(order.buyer, 'order_completed', 'Đơn hàng hoàn tất', 'Giao dịch đã hoàn thành thành công!', { orderId: order._id });
+    createNotification(order.seller, 'order_completed', 'Đơn hàng hoàn tất', 'Giao dịch đã hoàn thành thành công!', { orderId: order._id });
+    if (buyerUser) orderCompletedEmail(buyerUser.email, buyerUser.fullName, emailData);
+    if (sellerUser) orderCompletedEmail(sellerUser.email, sellerUser.fullName, emailData);
+
     res.status(200).json({
       success: true,
       message: 'Đã hoàn tất đơn hàng.',
@@ -731,6 +799,24 @@ exports.cancelOrder = async (req, res) => {
 
     await session.commitTransaction();
 
+    // Notify the other party + send emails (fire-and-forget after commit)
+    const cancellerName = req.user.fullName || 'Người dùng';
+    const otherId = req.user._id.toString() === order.buyer.toString() ? order.seller : order.buyer;
+    createNotification(
+      otherId,
+      'order_cancelled',
+      'Đơn hàng đã bị hủy',
+      `${cancellerName} đã hủy đơn hàng.`,
+      { orderId: order._id }
+    );
+    const [buyerUser, sellerUser] = await Promise.all([
+      User.findById(order.buyer).select('fullName email'),
+      User.findById(order.seller).select('fullName email'),
+    ]);
+    const emailData = { orderId: order._id, cancelledBy: cancellerName };
+    if (buyerUser) orderCancelledEmail(buyerUser.email, buyerUser.fullName, emailData);
+    if (sellerUser) orderCancelledEmail(sellerUser.email, sellerUser.fullName, emailData);
+
     res.status(200).json({
       success: true,
       message: 'Đã hủy đơn hàng.',
@@ -742,7 +828,7 @@ exports.cancelOrder = async (req, res) => {
     if (session?.inTransaction()) {
       await session.abortTransaction();
     }
-    
+
     if (session) {
       session.endSession();
       sessionEnded = true;

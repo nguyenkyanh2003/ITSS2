@@ -359,11 +359,11 @@ export function ProfilePage() {
   const [hasLoadedOrders, setHasLoadedOrders] = useState(false);
 
   const mapOrderStatus = (status: string) => {
-    if (status === "scheduling") return { tab: "pending", text: "Chờ xác nhận" };
-    if (status === "pending") return { tab: "shipping", text: "Đang giao" };
-    if (status === "completed") return { tab: "delivered", text: "Đã giao" };
-    if (status === "cancelled") return { tab: "cancelled", text: "Đã hủy" };
-    return { tab: "pending", text: "Chờ xác nhận" };
+    if (status === "scheduling") return { tab: "pending", text: t.orderStatusPending };
+    if (status === "pending") return { tab: "shipping", text: t.orderStatusShipping };
+    if (status === "completed") return { tab: "delivered", text: t.orderStatusDelivered };
+    if (status === "cancelled") return { tab: "cancelled", text: t.orderStatusCancelled };
+    return { tab: "pending", text: t.orderStatusPending };
   };
 
   const toId = (value: any) => {
@@ -377,9 +377,9 @@ export function ProfilePage() {
 
   const mappedOrders = useMemo(() => {
     return ordersRaw.map((order) => {
-      const sellerName = order?.seller?.fullName || "Người bán";
+      const sellerName = order?.seller?.fullName || t.sellerLabel;
       const sellerId = toId(order?.seller) || null;
-      const buyerName = order?.buyer?.fullName || "Người mua";
+      const buyerName = order?.buyer?.fullName || t.buyerLabel;
       const buyerId = toId(order?.buyer) || null;
       const statusInfo = mapOrderStatus(order.status);
 
@@ -389,8 +389,8 @@ export function ProfilePage() {
           const product = item.product || {};
           const productId = product._id || product.id || item.product;
           const productStatus = product.productStatus || product.condition || "used";
-          const variant = productStatus === "new" ? "Mới" : (productStatus === "other" ? "Khác" : "Đã qua sử dụng");
-          
+          const variant = productStatus === "new" ? t.conditionNew : (productStatus === "other" ? t.catOther : t.conditionUsed);
+
           let image = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop";
           if (product.images && product.images.length > 0) {
             image = getAssetUrl(product.images[0].url || product.images[0]);
@@ -400,7 +400,7 @@ export function ProfilePage() {
 
           return {
             id: String(productId),
-            name: product.title || "Sản phẩm",
+            name: product.title || t.productDefault,
             variant,
             quantity: Number(item.quantity || 1),
             image,
@@ -415,14 +415,14 @@ export function ProfilePage() {
 
         const productId = product?._id || product?.id || order.product || order.id;
         const productStatus = product?.productStatus || product?.condition || "used";
-        const variant = productStatus === "new" ? "Mới" : (productStatus === "other" ? "Khác" : "Đã qua sử dụng");
+        const variant = productStatus === "new" ? t.conditionNew : (productStatus === "other" ? t.catOther : t.conditionUsed);
         const price = Number(product?.price || 0);
         const firstImage = Array.isArray(product?.images) ? product.images[0] : null;
         const image = getAssetUrl(product?.image || firstImage?.url || firstImage) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop";
 
         items = [{
           id: String(productId),
-          name: product?.title || "Sản phẩm",
+          name: product?.title || t.productDefault,
           variant,
           quantity: 1,
           image,
@@ -445,7 +445,7 @@ export function ProfilePage() {
         totalAmount,
       };
     });
-  }, [ordersRaw, products]);
+  }, [ordersRaw, products, t]);
 
   const completedOrders = useMemo(() => {
     return ordersRaw.filter((order) => order.status === "completed");
@@ -663,8 +663,8 @@ export function ProfilePage() {
             <Link
               to="/messages"
               className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/15 text-white hover:bg-white/25 transition-colors"
-              aria-label="Tin nhắn"
-              title="Tin nhắn"
+              aria-label={t.messagesLink}
+              title={t.messagesLink}
             >
               <MessageCircle className="w-5 h-5" />
               {unreadCount > 0 && (
@@ -724,7 +724,7 @@ export function ProfilePage() {
                 className="w-full mt-3 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Tin nhắn</span>
+                <span>{t.messagesLink}</span>
                 {unreadCount > 0 && (
                   <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#EE4D2D] text-white text-xs flex items-center justify-center">
                     {unreadCount > 99 ? "99+" : unreadCount}
@@ -780,7 +780,7 @@ export function ProfilePage() {
                   }`}
                 >
                   <ShoppingBag className="w-5 h-5" />
-                  Đơn mua của tôi
+                  {t.myPurchases}
                 </button>
                 <button
                   onClick={() => { setActiveTab("sales"); loadOrders(); }}
@@ -791,7 +791,7 @@ export function ProfilePage() {
                   }`}
                 >
                   <Store className="w-5 h-5" />
-                  Đơn bán của tôi
+                  {t.mySales}
                 </button>
               </div>
 
@@ -800,7 +800,7 @@ export function ProfilePage() {
                   <div>
                     {myListings.length === 0 ? (
                       <div className="text-center py-12 text-gray-500">
-                        Bạn chưa đăng sản phẩm nào.
+                        {t.noListings}
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -846,11 +846,11 @@ export function ProfilePage() {
                     {/* Order Status Tabs */}
                     <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
                       {[
-                        { id: "all", label: "Tất cả" },
-                        { id: "pending", label: "Chờ xác nhận" },
-                        { id: "shipping", label: "Đang giao" },
-                        { id: "delivered", label: "Đã giao" },
-                        { id: "cancelled", label: "Đã hủy" }
+                        { id: "all", label: t.orderStatusAll },
+                        { id: "pending", label: t.orderStatusPending },
+                        { id: "shipping", label: t.orderStatusShipping },
+                        { id: "delivered", label: t.orderStatusDelivered },
+                        { id: "cancelled", label: t.orderStatusCancelled }
                       ].map(tab => (
                         <button
                           key={tab.id}
@@ -871,7 +871,7 @@ export function ProfilePage() {
                       {isOrdersLoading ? (
                         <div className="text-center py-12 text-gray-500 flex flex-col items-center justify-center gap-2">
                           <div className="w-8 h-8 border-4 border-[#EE4D2D] border-t-transparent rounded-full animate-spin"></div>
-                          <p>Đang tải đơn hàng...</p>
+                          <p>{t.loadingOrders}</p>
                         </div>
                       ) : ordersError ? (
                         <div className="text-center py-12 text-red-500">
@@ -880,12 +880,12 @@ export function ProfilePage() {
                             onClick={() => loadOrders()}
                             className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                           >
-                            Thử lại
+                            {t.retryBtn}
                           </button>
                         </div>
                       ) : filteredOrders.length === 0 ? (
                         <div className="text-center py-12 text-gray-500">
-                          Chưa có đơn hàng nào.
+                          {t.noOrders}
                         </div>
                       ) : (
                         filteredOrders.map(order => (
@@ -912,7 +912,7 @@ export function ProfilePage() {
                                   />
                                   <div className="flex-1">
                                     <h4 className="text-gray-900 font-medium line-clamp-1">{item.name}</h4>
-                                    <p className="text-gray-500 text-sm mt-1">Phân loại: {item.variant}</p>
+                                    <p className="text-gray-500 text-sm mt-1">{t.orderClassificationLabel}{item.variant}</p>
                                     <div className="text-gray-700 text-sm mt-1">x{item.quantity}</div>
                                   </div>
                                   <div className="text-[#EE4D2D] font-medium">
@@ -925,7 +925,7 @@ export function ProfilePage() {
                             {/* Card Footer */}
                             <div className="bg-gray-50 p-4 rounded-b-lg border-t border-gray-100 flex flex-col sm:flex-row justify-end items-end sm:items-center gap-4">
                               <div className="text-gray-900 mr-auto sm:mr-0">
-                                Thành tiền: <span className="text-xl font-bold text-[#EE4D2D] ml-2">{order.totalAmount.toLocaleString("vi-VN")} đ</span>
+                                {t.orderTotalLabel}<span className="text-xl font-bold text-[#EE4D2D] ml-2">{order.totalAmount.toLocaleString("vi-VN")} đ</span>
                               </div>
                               <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                                 {order.status === "delivered" ? (
@@ -937,10 +937,10 @@ export function ProfilePage() {
                                           disabled={reviewedOrders.has(order.id)}
                                           className="flex-1 sm:flex-none px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                          {reviewedOrders.has(order.id) ? "Đã đánh giá" : "Đánh giá"}
+                                          {reviewedOrders.has(order.id) ? t.reviewedBtn : t.reviewBtn}
                                         </button>
                                         <button className="flex-1 sm:flex-none px-6 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm">
-                                          Mua lại
+                                          {t.buyAgainBtn}
                                         </button>
                                       </>
                                     )}
@@ -952,7 +952,7 @@ export function ProfilePage() {
                                         onClick={() => openCancelModal(order.id)}
                                         className="w-full sm:w-auto px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors"
                                       >
-                                        Hủy đơn
+                                        {t.cancelOrderBtn}
                                       </button>
                                     )}
                                     {activeTab === "sales" && (
@@ -961,13 +961,13 @@ export function ProfilePage() {
                                           onClick={() => openCancelModal(order.id)}
                                           className="w-full sm:w-auto px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors"
                                         >
-                                          Từ chối đơn
+                                          {t.rejectOrderBtn}
                                         </button>
                                         <button
                                           onClick={() => handleConfirmOrder(order.id)}
                                           className="w-full sm:w-auto px-6 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
                                         >
-                                          Xác nhận đơn
+                                          {t.confirmOrderBtn}
                                         </button>
                                       </>
                                     )}
@@ -979,14 +979,14 @@ export function ProfilePage() {
                                         onClick={() => handleCompleteOrder(order.id)}
                                         className="w-full sm:w-auto px-6 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
                                       >
-                                        Đã nhận hàng
+                                        {t.receivedBtn}
                                       </button>
                                     ) : (
                                       <button
                                         onClick={() => handleCompleteOrder(order.id)}
                                         className="w-full sm:w-auto px-6 py-2 bg-[#EE4D2D] text-white rounded hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
                                       >
-                                        Đã giao hàng
+                                        {t.deliveredBtn}
                                       </button>
                                     )}
                                   </>
@@ -995,7 +995,7 @@ export function ProfilePage() {
                                     onClick={() => handleContactSeller(activeTab === "purchases" ? order.sellerId : order.buyerId, activeTab === "purchases" ? order.sellerName : order.buyerName)}
                                     className="w-full sm:w-auto px-6 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 font-medium transition-colors"
                                   >
-                                    Liên hệ
+                                    {t.contactBtn}
                                   </button>
                                 ) : null}
                               </div>
@@ -1018,7 +1018,7 @@ export function ProfilePage() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
             {/* Modal Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900">Chỉnh sửa hồ sơ</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t.editProfileTitle}</h3>
               <button 
                 onClick={closeEditModal} 
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1059,12 +1059,12 @@ export function ProfilePage() {
                     className="hidden"
                   />
                 </div>
-                <span className="text-sm text-gray-500 mt-3">Định dạng JPEG, PNG. Tối đa 2MB.</span>
+                <span className="text-sm text-gray-500 mt-3">{t.avatarFormatHint}</span>
               </div>
                
               {/* Inputs */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Họ và tên</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t.fullNameLabel}</label>
                 <input
                   type="text"
                   value={editName}
@@ -1074,7 +1074,7 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t.phoneLabel}</label>
                 <input
                   type="tel"
                   value={editPhone}
@@ -1084,7 +1084,7 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email (Định danh)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t.emailIdentityLabel}</label>
                 <input
                   type="email"
                   value={user?.email || ""}
@@ -1096,11 +1096,11 @@ export function ProfilePage() {
               <div className="pt-4 border-t border-gray-100 space-y-4">
                 <div className="flex items-center gap-2 text-gray-900 font-semibold">
                   <KeyRound className="w-5 h-5 text-[#EE4D2D]" />
-                  <span>Đổi mật khẩu</span>
+                  <span>{t.changePasswordLabel}</span>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu hiện tại</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t.currentPasswordLabel}</label>
                   <input
                     type="password"
                     value={currentPassword}
@@ -1110,7 +1110,7 @@ export function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu mới</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t.newPasswordLabel}</label>
                   <input
                     type="password"
                     value={newPassword}
@@ -1120,7 +1120,7 @@ export function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Xác nhận mật khẩu mới</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t.confirmNewPasswordLabel}</label>
                   <input
                     type="password"
                     value={confirmPassword}
@@ -1135,7 +1135,7 @@ export function ProfilePage() {
                   disabled={isChangingPassword}
                   className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium transition-colors disabled:opacity-60"
                 >
-                  {isChangingPassword ? "Đang đổi mật khẩu..." : "Đổi mật khẩu"}
+                  {isChangingPassword ? t.changingPassword : t.changePasswordBtn}
                 </button>
               </div>
             </div>
@@ -1146,13 +1146,13 @@ export function ProfilePage() {
                 onClick={closeEditModal}
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-colors"
               >
-                Hủy
+                {t.cancel}
               </button>
               <button
                 onClick={handleSaveProfile}
                 className="px-6 py-2 bg-[#EE4D2D] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm"
               >
-                Lưu thay đổi
+                {t.saveChangesBtn}
               </button>
             </div>
           </div>
@@ -1164,7 +1164,7 @@ export function ProfilePage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900">Xác nhận hủy đơn</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t.cancelOrderTitle}</h3>
               <button
                 onClick={closeCancelModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1174,7 +1174,7 @@ export function ProfilePage() {
             </div>
 
             <div className="p-6 space-y-4">
-              <p className="text-sm text-gray-600">Vui lòng chọn lý do hủy đơn hàng:</p>
+              <p className="text-sm text-gray-600">{t.cancelReasonPrompt}</p>
               <div className="space-y-3">
                 {cancelReasons.map((reason) => (
                   <label
@@ -1202,7 +1202,7 @@ export function ProfilePage() {
                     <textarea
                       value={cancelReasonOther}
                       onChange={(event) => setCancelReasonOther(event.target.value)}
-                      placeholder="Nhập lý do hủy đơn..."
+                      placeholder={t.cancelReasonOtherPlaceholder}
                       rows={3}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EE4D2D] focus:border-[#EE4D2D] outline-none transition-all"
                     />
@@ -1217,14 +1217,14 @@ export function ProfilePage() {
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-colors"
                 disabled={isCancellingOrder}
               >
-                Hủy
+                {t.cancel}
               </button>
               <button
                 onClick={handleCancelOrder}
                 className="px-6 py-2 bg-[#EE4D2D] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm disabled:opacity-60"
                 disabled={!cancelReason || (cancelReason === "Lý do khác" && !cancelReasonOther.trim()) || isCancellingOrder}
               >
-                {isCancellingOrder ? "Đang hủy..." : "Xác nhận hủy"}
+                {isCancellingOrder ? t.cancelling : t.confirmCancelBtn}
               </button>
             </div>
           </div>
@@ -1236,7 +1236,7 @@ export function ProfilePage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900">Đánh giá Người bán</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t.reviewSellerTitle}</h3>
               <button
                 onClick={closeReviewModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1248,7 +1248,7 @@ export function ProfilePage() {
             <div className="p-6 space-y-6">
               {/* Rating Stars */}
               <div className="flex flex-col items-center gap-2">
-                <span className="text-sm font-medium text-gray-700">Chất lượng sản phẩm & Dịch vụ</span>
+                <span className="text-sm font-medium text-gray-700">{t.reviewQualityLabel}</span>
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -1268,23 +1268,23 @@ export function ProfilePage() {
                   ))}
                 </div>
                 <span className="text-sm text-gray-500">
-                  {reviewRating === 1 && "Tệ"}
-                  {reviewRating === 2 && "Không hài lòng"}
-                  {reviewRating === 3 && "Bình thường"}
-                  {reviewRating === 4 && "Hài lòng"}
-                  {reviewRating === 5 && "Tuyệt vời"}
+                  {reviewRating === 1 && t.reviewRating1}
+                  {reviewRating === 2 && t.reviewRating2}
+                  {reviewRating === 3 && t.reviewRating3}
+                  {reviewRating === 4 && t.reviewRating4}
+                  {reviewRating === 5 && t.reviewRating5}
                 </span>
               </div>
 
               {/* Comment Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bình luận (Tùy chọn)
+                  {t.reviewCommentLabel}
                 </label>
                 <textarea
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
-                  placeholder="Chia sẻ trải nghiệm của bạn về người bán và sản phẩm..."
+                  placeholder={t.reviewCommentPlaceholder}
                   rows={4}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EE4D2D] focus:border-[#EE4D2D] outline-none transition-all resize-none"
                 />
@@ -1297,14 +1297,14 @@ export function ProfilePage() {
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-colors"
                 disabled={isSubmittingReview}
               >
-                Hủy
+                {t.cancel}
               </button>
               <button
                 onClick={handleSubmitReview}
                 disabled={isSubmittingReview}
                 className="px-6 py-2 bg-[#EE4D2D] text-white rounded-lg hover:bg-[#E54F00] font-medium transition-colors shadow-sm disabled:opacity-60"
               >
-                {isSubmittingReview ? "Đang gửi..." : "Gửi đánh giá"}
+                {isSubmittingReview ? t.submittingReview : t.submitReviewBtn}
               </button>
             </div>
           </div>

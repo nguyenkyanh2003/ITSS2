@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ArrowLeft, Inbox, MessageCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { useNotification } from "../../context/NotificationContext";
+import { useLanguage } from "../context/LanguageContext";
 import { getApiUrl, getAssetUrl } from "../../utils/api";
 
 interface ChatUser {
@@ -39,26 +40,25 @@ const getId = (value: string | { id?: string; _id?: string } | undefined) => {
   return String(value.id || value._id || "");
 };
 
-const formatMessageTime = (value?: string) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-};
-
 export function MessagesPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { showNotification } = useNotification();
+  const { t, lang } = useLanguage();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const errorTitle = "Lỗi";
+
+  const formatMessageTime = (value?: string) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat(lang === "ja" ? "ja-JP" : "vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  };
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -77,12 +77,12 @@ export function MessagesPage() {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-          throw new Error(data.message || "Không thể tải tin nhắn");
+          throw new Error(data.message || t.errLoadMessages);
         }
 
         setConversations(Array.isArray(data.data?.conversations) ? data.data.conversations : []);
       } catch (error: any) {
-        showNotification(errorTitle, error.message || "Không thể tải tin nhắn", "error");
+        showNotification(t.errorTitle, error.message || t.errLoadMessages, "error");
       } finally {
         setIsLoading(false);
       }
@@ -101,11 +101,11 @@ export function MessagesPage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2 text-white hover:opacity-80">
             <ArrowLeft className="w-5 h-5" />
-            <span>Quay lại</span>
+            <span>{t.back}</span>
           </Link>
           <div className="flex items-center gap-2 text-white font-semibold">
             <MessageCircle className="w-5 h-5" />
-            <span>Tin nhắn</span>
+            <span>{t.messagesTitle}</span>
           </div>
         </div>
       </header>
@@ -113,18 +113,18 @@ export function MessagesPage() {
       <main className="max-w-4xl mx-auto px-6 py-6">
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           {isLoading ? (
-            <div className="py-12 text-center text-gray-500">Đang tải tin nhắn...</div>
+            <div className="py-12 text-center text-gray-500">{t.loadingMessages}</div>
           ) : conversations.length === 0 ? (
             <div className="py-16 text-center text-gray-500">
               <Inbox className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-              <div>Chưa có cuộc trò chuyện nào.</div>
+              <div>{t.noConversations}</div>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
               {conversations.map((conversation) => {
                 const otherUser = conversation.otherUser;
                 const otherUserId = otherUser?.id ? String(otherUser.id) : "";
-                const displayName = otherUser?.fullName || otherUser?.email || "Người dùng";
+                const displayName = otherUser?.fullName || otherUser?.email || t.defaultUser;
                 const lastMessage = conversation.lastMessage;
                 const isMine = getId(lastMessage?.sender) === String(user.id);
 
@@ -157,8 +157,8 @@ export function MessagesPage() {
                       </div>
                       <div className="text-sm text-gray-500 truncate mt-1">
                         {lastMessage
-                          ? `${isMine ? "Bạn: " : ""}${lastMessage.content}`
-                          : "Chưa có tin nhắn"}
+                          ? `${isMine ? t.youLabel : ""}${lastMessage.content}`
+                          : t.noLastMessage}
                       </div>
                     </div>
 

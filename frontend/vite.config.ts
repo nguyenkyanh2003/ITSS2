@@ -35,16 +35,23 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, res) => {
+            if (!res.headersSent) {
+              (res as any).writeHead(503, { 'Content-Type': 'application/json' });
+              (res as any).end(JSON.stringify({ success: false, message: 'Backend chưa khởi động. Hãy chạy lệnh npm run dev trong thư mục backend.' }));
+            }
+          });
+        },
       },
       '/uploads': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
-      }
-      ,
+      },
       '/config': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
-      }
+      },
     }
   },
 

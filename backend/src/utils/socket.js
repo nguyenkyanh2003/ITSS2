@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 const { buildCorsOptions } = require('./cors');
+const { setSocketGetter } = require('./notification');
 
 let io;
 
@@ -56,6 +57,7 @@ const initSocket = (httpServer, options = {}) => {
     });
   });
 
+  setSocketGetter(getSocket);
   return io;
 };
 

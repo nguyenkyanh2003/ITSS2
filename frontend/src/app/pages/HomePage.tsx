@@ -1,12 +1,14 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, MessageCircle, Clock, ChevronRight, Star, MapPin } from "lucide-react";
+import { Search, Plus, MessageCircle, Clock, Star, MapPin } from "lucide-react";
 import { useProducts, ProductQueryParams } from "../store/ProductStore";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { useUnreadMessages } from "../hooks/useUnreadMessages";
 import { useNotification } from "../../context/NotificationContext";
+import { NotificationBell } from "../components/NotificationBell";
+import { LanguageToggle } from "../components/LanguageToggle";
 import { getApiUrl } from "../../utils/api";
 
 type SuggestionItem = {
@@ -14,31 +16,16 @@ type SuggestionItem = {
   value: string;
 };
 
-// ─── Category config ─────────────────────────────────────────────────────────
+// ─── Category config (backend values, labels resolved from translations) ──────
 
-const CATEGORIES = [
-  { label: "Điện tử", icon: "💻", backend: ["Laptop & PC", "Tai nghe & Phụ kiện", "Điện thoại & Tablet", "Laptop & máy tính", "Tai nghe & phụ kiện"] },
-  { label: "Sách vở", icon: "📚", backend: ["Giáo trình & Tài liệu"] },
-  { label: "Đồ phòng", icon: "🛋️", backend: ["Nội thất nhỏ & Đồ phòng"] },
-  { label: "Gia dụng", icon: "🏠", backend: ["Đồ gia dụng nhỏ"] },
-  { label: "Xe cộ", icon: "🚲", backend: ["Xe đạp & Phụ tùng"] },
-  { label: "Thời trang", icon: "👕", backend: ["Thời trang & Phụ kiện"] },
-  { label: "Khác", icon: "📦", backend: ["Khác"] },
-];
-
-const AREA_OPTIONS = [
-  { label: "Tất cả", value: "" },
-  { label: "Nhà B1", value: "KTX Bách Khoa" },
-  { label: "Thư viện", value: "Thư viện TTA" },
-  { label: "Cổng Parabol", value: "Khu giảng đường" },
-  { label: "Cổng TĐN", value: "Khu thực hành" },
-];
-
-const SORT_OPTIONS = [
-  { label: "Liên quan", value: "" },
-  { label: "Mới nhất", value: "newest" },
-  { label: "Giá thấp", value: "price-low" },
-  { label: "Giá cao", value: "price-high" },
+const CATEGORY_CONFIG = [
+  { tKey: "catElectronicsShort" as const, icon: "💻", backend: ["Laptop & PC", "Tai nghe & Phụ kiện", "Điện thoại & Tablet", "Laptop & máy tính", "Tai nghe & phụ kiện"] },
+  { tKey: "catBooksShort" as const, icon: "📚", backend: ["Giáo trình & Tài liệu"] },
+  { tKey: "catDormItemsShort" as const, icon: "🛋️", backend: ["Nội thất nhỏ & Đồ phòng"] },
+  { tKey: "catHouseholdShort" as const, icon: "🏠", backend: ["Đồ gia dụng nhỏ"] },
+  { tKey: "catVehiclesShort" as const, icon: "🚲", backend: ["Xe đạp & Phụ tùng"] },
+  { tKey: "catFashionShort" as const, icon: "👕", backend: ["Thời trang & Phụ kiện"] },
+  { tKey: "catOther" as const, icon: "📦", backend: ["Khác"] },
 ];
 
 const recentSearches = ["Macbook", "Giải tích 1", "Tai nghe", "Xe đạp"];
@@ -61,6 +48,26 @@ export function HomePage() {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { unreadCount } = useUnreadMessages(isAuthenticated);
+
+  const CATEGORIES = useMemo(
+    () => CATEGORY_CONFIG.map((c) => ({ ...c, label: t[c.tKey] })),
+    [t]
+  );
+
+  const AREA_OPTIONS = useMemo(() => [
+    { label: t.all, value: "" },
+    { label: t.areaNhaB1, value: "KTX Bách Khoa" },
+    { label: t.areaLibraryShort, value: "Thư viện TTA" },
+    { label: t.areaParabol, value: "Khu giảng đường" },
+    { label: t.areaTranDaiNghiaShort, value: "Khu thực hành" },
+  ], [t]);
+
+  const SORT_OPTIONS = useMemo(() => [
+    { label: t.sortRelevanceShort, value: "" },
+    { label: t.sortNewest, value: "newest" },
+    { label: t.sortPriceLowShort, value: "price-low" },
+    { label: t.sortPriceHighShort, value: "price-high" },
+  ], [t]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -181,7 +188,7 @@ export function HomePage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setShowSuggestions(true)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  placeholder="Tìm kiếm sản phẩm, sách vở, đồ dùng..."
+                  placeholder={t.searchPlaceholder}
                   className="flex-1 px-4 py-2.5 text-sm outline-none text-gray-800 bg-white placeholder-gray-400"
                 />
                 <button
@@ -199,7 +206,7 @@ export function HomePage() {
                   {shouldShowRecent && (
                     <>
                       <div className="px-4 pt-3 pb-1 text-xs text-gray-400 flex items-center gap-1.5 uppercase tracking-wide">
-                        <Clock className="w-3 h-3" /> Tìm kiếm gần đây
+                        <Clock className="w-3 h-3" /> {t.recentSearches}
                       </div>
                       {recentSearches.map((item) => (
                         <button key={item} onClick={() => handleSuggestionClick(item)}
@@ -211,19 +218,19 @@ export function HomePage() {
                     </>
                   )}
                   {shouldShowFiltered && isSuggesting && (
-                    <div className="px-4 py-3 text-sm text-gray-400">Đang tìm kiếm...</div>
+                    <div className="px-4 py-3 text-sm text-gray-400">{t.loadingSuggestions}</div>
                   )}
                   {shouldShowFiltered && !hasNoResults && suggestions.map((item, i) => (
                     <button key={i} onClick={() => handleSuggestionClick(item.value)}
                       className="w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-orange-50 flex items-center gap-3">
                       <Search className="w-3.5 h-3.5 text-gray-300 shrink-0" />
                       {item.value}
-                      <span className="ml-auto text-xs text-gray-400">{item.type === "category" ? "Danh mục" : ""}</span>
+                      <span className="ml-auto text-xs text-gray-400">{item.type === "category" ? t.categoryLabel : ""}</span>
                     </button>
                   ))}
                   {hasNoResults && (
                     <div className="px-4 py-3 text-sm text-gray-400">
-                      Không tìm thấy kết quả cho '<span className="text-gray-700 font-medium">{searchQuery}</span>'
+                      {t.noResults} '<span className="text-gray-700 font-medium">{searchQuery}</span>'
                     </div>
                   )}
                 </div>
@@ -243,8 +250,10 @@ export function HomePage() {
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] hidden sm:block">Chat</span>
+                    <span className="text-[10px] hidden sm:block">{t.chatLabel}</span>
                   </Link>
+
+                  <NotificationBell />
 
                   <Link to="/profile" className="flex flex-col items-center gap-0.5 text-white hover:text-yellow-200 transition-colors">
                     <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white/60">
@@ -253,13 +262,15 @@ export function HomePage() {
                     <span className="text-[10px] hidden sm:block max-w-16 truncate">{user?.fullName?.split(" ").pop()}</span>
                   </Link>
 
-                  <button onClick={logout} className="text-white/80 text-xs hover:text-white hidden sm:block">Đăng xuất</button>
+                  <button onClick={logout} className="text-white/80 text-xs hover:text-white hidden sm:block">{t.logout}</button>
                 </>
               ) : (
                 <Link to="/login" className="text-white text-sm hover:text-yellow-200 font-medium transition-colors whitespace-nowrap">
-                  Đăng nhập
+                  {t.login}
                 </Link>
               )}
+
+              <LanguageToggle />
 
               <button
                 onClick={() => {
@@ -274,7 +285,7 @@ export function HomePage() {
                 style={{ color: "#EE4D2D" }}
               >
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Đăng bán</span>
+                <span className="hidden sm:inline">{t.postSell}</span>
               </button>
             </div>
           </div>
@@ -292,7 +303,7 @@ export function HomePage() {
                     : "text-white hover:bg-white/10"
                 }`}
               >
-                Tất cả
+                {t.all}
               </button>
               {CATEGORIES.map((cat, idx) => (
                 <button
@@ -350,11 +361,11 @@ export function HomePage() {
         <div className="bg-white rounded-sm px-4 py-3 mb-4 shadow-sm flex flex-wrap items-center gap-3">
           {/* Price */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 whitespace-nowrap">Giá:</span>
-            <input type="number" placeholder="Từ" value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)}
+            <span className="text-xs text-gray-500 whitespace-nowrap">{t.priceLabel}</span>
+            <input type="number" placeholder={t.priceFrom} value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)}
               className="w-20 px-2 py-1 border border-gray-200 rounded-sm text-xs outline-none focus:border-orange-400" />
             <span className="text-gray-400 text-xs">—</span>
-            <input type="number" placeholder="Đến" value={priceTo} onChange={(e) => setPriceTo(e.target.value)}
+            <input type="number" placeholder={t.priceTo} value={priceTo} onChange={(e) => setPriceTo(e.target.value)}
               className="w-20 px-2 py-1 border border-gray-200 rounded-sm text-xs outline-none focus:border-orange-400" />
           </div>
 
@@ -367,7 +378,7 @@ export function HomePage() {
                     ? "border-orange-400 text-orange-500 bg-orange-50"
                     : "border-gray-200 text-gray-500 hover:border-gray-300"
                 }`}>
-                {val === "" ? "Tất cả" : val === "new" ? "Mới" : "Đã dùng"}
+                {val === "" ? t.all : val === "new" ? t.conditionNew : t.conditionUsedShort}
               </button>
             ))}
           </div>
@@ -382,7 +393,7 @@ export function HomePage() {
 
           {/* Sort */}
           <div className="ml-auto flex items-center gap-1.5">
-            <span className="text-xs text-gray-400">Sắp xếp:</span>
+            <span className="text-xs text-gray-400">{t.sortLabel}</span>
             {SORT_OPTIONS.map((o) => (
               <button key={o.value} onClick={() => setSortBy(o.value)}
                 className={`px-3 py-1 text-xs rounded-sm border transition-colors ${
@@ -401,11 +412,11 @@ export function HomePage() {
           <div className="flex items-center gap-2">
             <div className="w-1 h-5 rounded-full" style={{ backgroundColor: "#EE4D2D" }} />
             <h2 className="text-base font-semibold text-gray-800">
-              {activeCategoryIdx !== null ? CATEGORIES[activeCategoryIdx].label : "Gợi ý hôm nay"}
+              {activeCategoryIdx !== null ? CATEGORIES[activeCategoryIdx].label : t.homeSuggestTitle}
             </h2>
           </div>
           <span className="text-sm text-gray-400">
-            {isLoading ? "Đang tải..." : `${products.length} sản phẩm`}
+            {isLoading ? t.loading : `${products.length} ${t.productsUnit}`}
           </span>
         </div>
 
@@ -428,7 +439,7 @@ export function HomePage() {
         ) : products.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-sm shadow-sm">
             <div className="text-5xl mb-4">🔍</div>
-            <p className="text-gray-500 text-sm">Không tìm thấy sản phẩm phù hợp</p>
+            <p className="text-gray-500 text-sm">{t.noProducts}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
@@ -454,12 +465,12 @@ export function HomePage() {
                   {/* Status badge */}
                   {product.status === "reserved" && (
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] text-center py-0.5">
-                      Đã giữ chỗ
+                      {t.statusReserved}
                     </div>
                   )}
                   {product.status === "sold" && (
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm border-2 border-white px-2 py-1 rounded">ĐÃ BÁN</span>
+                      <span className="text-white font-bold text-sm border-2 border-white px-2 py-1 rounded">{t.statusSoldBadge}</span>
                     </div>
                   )}
                 </div>
@@ -490,7 +501,7 @@ export function HomePage() {
                     </div>
                     <div className="flex items-center gap-0.5">
                       <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400 shrink-0" />
-                      <span>{product.seller.rating > 0 ? product.seller.rating.toFixed(1) : "Mới"}</span>
+                      <span>{product.seller.rating > 0 ? product.seller.rating.toFixed(1) : t.sellerNewBadge}</span>
                     </div>
                   </div>
                 </div>

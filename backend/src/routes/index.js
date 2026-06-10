@@ -7,6 +7,8 @@ const orderRoutes = require('./orderRoutes');
 const categoryRoutes = require('./categoryRoutes');
 const reviewRoutes = require('./reviewRoutes');
 const chatRoutes = require('./chatRoutes');
+const notificationRoutes = require('./notificationRoutes');
+const reportRoutes = require('./reportRoutes');
 
 // Route test server
 router.get('/ping', (req, res) => {
@@ -20,5 +22,7 @@ router.use('/orders', orderRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/chats', chatRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/reports', reportRoutes);
 
 module.exports = router;
