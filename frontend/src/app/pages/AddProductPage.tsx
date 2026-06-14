@@ -128,7 +128,7 @@ export function AddProductPage() {
     form.append('stock', String(parsedStock));
     form.append('productStatus', condition === 'Mới' ? 'new' : 'used');
     form.append('category', category);
-    form.append('location', JSON.stringify({ campusArea: CAMPUS_SPOTS[0] }));
+    form.append('location', JSON.stringify({ campusArea: finalSpots[0] || CAMPUS_SPOTS[0] }));
     form.append('meetingSpots', JSON.stringify(finalSpots));
     form.append('availableTimeSlots', JSON.stringify([
       { note: `${timeSlot1Day} ${timeSlot1Time}`.trim() || "", day: timeSlot1Day, time: timeSlot1Time },

@@ -377,10 +377,41 @@ exports.getProducts = async (req, res) => {
         { 'location.dorm': locationRegex },
         { 'location.district': locationRegex },
         { 'location.city': locationRegex },
+        { meetingSpots: locationRegex },
       ]);
     }
 
-    ['campusArea', 'dorm', 'district', 'city'].forEach((field) => {
+    const campusAreaValue = (req.query.campusArea || '').trim();
+    if (campusAreaValue) {
+      const campusRegex = new RegExp(escapeRegex(campusAreaValue), 'i');
+      const areaOrConditions = [
+        { 'location.campusArea': campusRegex },
+        { meetingSpots: campusRegex },
+      ];
+
+      // Legacy DB values from seed data that the frontend maps to each display area
+      const LEGACY_AREA_VALUES = {
+        'Nhà B1': ['KTX Bách Khoa', 'B1', 'b1', null, ''],
+        'Parabol': ['Khu giảng đường'],
+        'Trần Đại Nghĩa': ['Khu thực hành'],
+      };
+
+      for (const [key, legacyValues] of Object.entries(LEGACY_AREA_VALUES)) {
+        if (campusAreaValue.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(campusAreaValue.toLowerCase())) {
+          areaOrConditions.push({ 'location.campusArea': { $in: legacyValues } });
+          if (key === 'Nhà B1') {
+            // Nhà B1 is the default area — include products with no campusArea field at all
+            areaOrConditions.push({ 'location.campusArea': { $exists: false } });
+          }
+          break;
+        }
+      }
+
+      const areaCondition = { $or: areaOrConditions };
+      filter.$and = filter.$and ? [...filter.$and, areaCondition] : [areaCondition];
+    }
+
+    ['dorm', 'district', 'city'].forEach((field) => {
       const value = req.query[field];
       if (value) {
         filter[`location.${field}`] = new RegExp(escapeRegex(String(value)), 'i');

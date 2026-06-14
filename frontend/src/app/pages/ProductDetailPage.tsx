@@ -37,6 +37,7 @@ export function ProductDetailPage() {
     category: '',
     image: '',
     availableTimeSlots: [] as {day: string, time: string}[],
+    meetingSpots: [] as string[],
   });
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
@@ -54,6 +55,9 @@ export function ProductDetailPage() {
       formData.append('productStatus', editFormData.condition === 'Mới' ? 'new' : (editFormData.condition === 'Khác' ? 'other' : 'used'));
       if (editFormData.category) {
         formData.append('category', editFormData.category);
+      }
+      if (editFormData.meetingSpots.length > 0) {
+        formData.append('meetingSpots', JSON.stringify(editFormData.meetingSpots));
       }
       
       if (editFormData.availableTimeSlots && editFormData.availableTimeSlots.length > 0) {
@@ -86,6 +90,7 @@ export function ProductDetailPage() {
           condition: editFormData.condition,
           category: editFormData.category || product.category,
           availableTimeSlots: editFormData.availableTimeSlots,
+          preferredSpots: editFormData.meetingSpots,
           image: getAssetUrl(updatedProductInfo.image) || editFormData.image,
         };
         updateProduct(product.id, updates);
@@ -524,6 +529,7 @@ export function ProductDetailPage() {
                         category: product.category || '',
                         image: product.image,
                         availableTimeSlots: product.availableTimeSlots ? [...product.availableTimeSlots] : [],
+                        meetingSpots: product.preferredSpots ? [...product.preferredSpots] : [],
                       });
                       setEditImageFile(null);
                       setIsEditModalOpen(true);
@@ -817,6 +823,38 @@ export function ProductDetailPage() {
                   >
                     {t.addSlotBtn}
                   </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t.preferredSpotsTitle || "Địa điểm gặp mặt"}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {["Nhà B1", "Thư viện Tạ Quang Bửu", "Cổng Parabol", "Cổng Trần Đại Nghĩa"].map((spot) => (
+                    <label
+                      key={spot}
+                      className={`flex items-center gap-2 p-2 border rounded-lg cursor-pointer text-sm transition-colors ${
+                        editFormData.meetingSpots.includes(spot)
+                          ? "border-[#EE4D2D] bg-orange-50"
+                          : "border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={editFormData.meetingSpots.includes(spot)}
+                        onChange={() => {
+                          const current = editFormData.meetingSpots;
+                          const next = current.includes(spot)
+                            ? current.filter((s) => s !== spot)
+                            : [...current, spot];
+                          setEditFormData({ ...editFormData, meetingSpots: next });
+                        }}
+                        className="w-4 h-4 text-[#EE4D2D] focus:ring-[#EE4D2D] rounded"
+                      />
+                      <span>{spot}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
 

@@ -56,10 +56,10 @@ export function HomePage() {
 
   const AREA_OPTIONS = useMemo(() => [
     { label: t.all, value: "" },
-    { label: t.areaNhaB1, value: "KTX Bách Khoa" },
-    { label: t.areaLibraryShort, value: "Thư viện TTA" },
-    { label: t.areaParabol, value: "Khu giảng đường" },
-    { label: t.areaTranDaiNghiaShort, value: "Khu thực hành" },
+    { label: t.areaNhaB1, value: "Nhà B1" },
+    { label: t.areaLibraryShort, value: "Thư viện" },
+    { label: t.areaParabol, value: "Parabol" },
+    { label: t.areaTranDaiNghiaShort, value: "Trần Đại Nghĩa" },
   ], [t]);
 
   const SORT_OPTIONS = useMemo(() => [
