@@ -34,6 +34,7 @@ export function ProductDetailPage() {
     description: '',
     price: 0,
     condition: '',
+    category: '',
     image: '',
     availableTimeSlots: [] as {day: string, time: string}[],
   });
@@ -51,6 +52,9 @@ export function ProductDetailPage() {
       }
       formData.append('price', String(editFormData.price));
       formData.append('productStatus', editFormData.condition === 'Mới' ? 'new' : (editFormData.condition === 'Khác' ? 'other' : 'used'));
+      if (editFormData.category) {
+        formData.append('category', editFormData.category);
+      }
       
       if (editFormData.availableTimeSlots && editFormData.availableTimeSlots.length > 0) {
         formData.append('availableTimeSlots', JSON.stringify(editFormData.availableTimeSlots.map(slot => ({
@@ -80,6 +84,7 @@ export function ProductDetailPage() {
           description: editFormData.description,
           price: editFormData.price,
           condition: editFormData.condition,
+          category: editFormData.category || product.category,
           availableTimeSlots: editFormData.availableTimeSlots,
           image: getAssetUrl(updatedProductInfo.image) || editFormData.image,
         };
@@ -308,11 +313,11 @@ export function ProductDetailPage() {
                 return (
                   <>
                     {/* Main image */}
-                    <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                    <div className="aspect-[4/3] bg-gray-50 relative overflow-hidden flex items-center justify-center">
                       <ImageWithFallback
                         src={allImages[clampedIdx]}
                         alt={product.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                       {allImages.length > 1 && (
                         <>
@@ -392,7 +397,7 @@ export function ProductDetailPage() {
                   <div className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
                     {product.category === "Điện tử & Công nghệ"
                       ? t.catElectronics
-                      : product.category === "Giáo trình & Sách học"
+                      : (product.category === "Học tập & Văn phòng phẩm" || product.category === "Giáo trình & Sách học")
                       ? t.catBooks
                       : product.category === "Đồ dùng phòng trọ"
                       ? t.catDormItems
@@ -437,8 +442,8 @@ export function ProductDetailPage() {
               </div>
             </div>
 
-            {product.seller?.id && (
-              <ProductReviewsSection sellerId={product.seller.id} />
+            {product.id && (
+              <ProductReviewsSection productId={product.id} />
             )}
           </div>
 
@@ -516,6 +521,7 @@ export function ProductDetailPage() {
                         description: product.description || '',
                         price: product.price,
                         condition: product.condition,
+                        category: product.category || '',
                         image: product.image,
                         availableTimeSlots: product.availableTimeSlots ? [...product.availableTimeSlots] : [],
                       });
@@ -742,6 +748,23 @@ export function ProductDetailPage() {
                     <option value="Khác">{t.catOther}</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.categoryFieldLabel}</label>
+                <select
+                  className="w-full border rounded p-2 focus:ring-2 focus:ring-[#EE4D2D] outline-none"
+                  value={editFormData.category}
+                  onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                >
+                  <option value="Điện tử & Công nghệ">{t.catElectronics}</option>
+                  <option value="Học tập & Văn phòng phẩm">{t.catBooksShort}</option>
+                  <option value="Đồ dùng phòng trọ">{t.catDormItems}</option>
+                  <option value="Gia dụng & Sinh hoạt">{t.catHousehold}</option>
+                  <option value="Phương tiện di chuyển">{t.catVehicles}</option>
+                  <option value="Quần áo & Thời trang">{t.catFashion}</option>
+                  <option value="Khác">{t.catOther}</option>
+                </select>
               </div>
 
               <div>

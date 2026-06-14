@@ -154,8 +154,11 @@ exports.createReview = async (req, res) => {
       });
     }
 
+    const productId = order.items?.[0]?.product || null;
+
     const review = await Review.create({
       order: order._id,
+      product: productId,
       reviewer: req.user._id,
       reviewedUser: order.seller,
       rating: normalizedRating,
@@ -222,6 +225,45 @@ exports.getReviewsBySeller = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || 'Lỗi server khi lấy đánh giá.',
+    });
+  }
+};
+
+exports.getReviewsByProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID sản phẩm không hợp lệ.',
+      });
+    }
+
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Number.parseInt(req.query.limit, 10) || 20, 50);
+
+    const { reviews, total } = await listReviews({
+      filter: { product: new mongoose.Types.ObjectId(productId) },
+      page,
+      limit,
+    });
+
+    return res.status(200).json({
+      success: true,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      data: {
+        reviews: reviews.map((review) => buildReviewResponse(review)),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi server khi lấy đánh giá sản phẩm.',
     });
   }
 };

@@ -15,21 +15,21 @@ interface ReviewItem {
   } | string | null;
 }
 
-export function ProductReviewsSection({ sellerId }: { sellerId: string }) {
+export function ProductReviewsSection({ productId }: { productId: string }) {
   const { lang } = useLanguage();
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!sellerId) return;
+    if (!productId) return;
 
     const controller = new AbortController();
     const loadReviews = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const res = await fetch(getApiUrl(`/api/reviews/seller/${sellerId}?limit=20`), {
+        const res = await fetch(getApiUrl(`/api/reviews/product/${productId}?limit=20`), {
           signal: controller.signal,
         });
         const data = await res.json();
@@ -48,9 +48,9 @@ export function ProductReviewsSection({ sellerId }: { sellerId: string }) {
 
     loadReviews();
     return () => controller.abort();
-  }, [sellerId]);
+  }, [productId]);
 
-  if (!sellerId) return null;
+  if (!productId) return null;
 
   const title = lang === "ja" ? "購入者のレビュー" : "Đánh giá từ người mua";
   const emptyText = lang === "ja" ? "まだレビューがありません。" : "Chưa có đánh giá nào.";

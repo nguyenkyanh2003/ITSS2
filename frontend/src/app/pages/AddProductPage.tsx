@@ -23,17 +23,13 @@ export function AddProductPage() {
   const errorTitle = "Lỗi";
   const successTitle = "Thành công";
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("1");
   const [condition, setCondition] = useState<"Mới" | "Đã qua sử dụng">("Đã qua sử dụng");
   const [category, setCategory] = useState<
-    "Điện tử & Công nghệ" | "Giáo trình & Sách học" | "Đồ dùng phòng trọ" | "Gia dụng & Sinh hoạt" | "Phương tiện di chuyển" | "Quần áo & Thời trang" | "Khác"
+    "Điện tử & Công nghệ" | "Học tập & Văn phòng phẩm" | "Đồ dùng phòng trọ" | "Gia dụng & Sinh hoạt" | "Phương tiện di chuyển" | "Quần áo & Thời trang" | "Khác"
   >("Điện tử & Công nghệ");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -41,6 +37,20 @@ export function AddProductPage() {
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const [timeSlot1Day, setTimeSlot1Day] = useState("");
+  const [timeSlot1Time, setTimeSlot1Time] = useState("");
+  const [timeSlot2Day, setTimeSlot2Day] = useState("");
+  const [timeSlot2Time, setTimeSlot2Time] = useState("");
+  const [timeSlot3Day, setTimeSlot3Day] = useState("");
+  const [timeSlot3Time, setTimeSlot3Time] = useState("");
+
+  const [selectedSpots, setSelectedSpots] = useState<string[]>([]);
+  const [customSpot, setCustomSpot] = useState("");
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || []);
@@ -68,16 +78,6 @@ export function AddProductPage() {
     }
     e.target.value = '';
   };
-
-  const [timeSlot1Day, setTimeSlot1Day] = useState("");
-  const [timeSlot1Time, setTimeSlot1Time] = useState("");
-  const [timeSlot2Day, setTimeSlot2Day] = useState("");
-  const [timeSlot2Time, setTimeSlot2Time] = useState("");
-  const [timeSlot3Day, setTimeSlot3Day] = useState("");
-  const [timeSlot3Time, setTimeSlot3Time] = useState("");
-
-  const [selectedSpots, setSelectedSpots] = useState<string[]>([]);
-  const [customSpot, setCustomSpot] = useState("");
 
   const toggleSpot = (spot: string) => {
     setSelectedSpots((prev) =>
@@ -250,7 +250,7 @@ export function AddProductPage() {
                 className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EE4D2D] focus:border-transparent bg-white text-gray-900 border border-gray-200 shadow-lg"
               >
                 <option value="Điện tử & Công nghệ">{t.catElectronics}</option>
-                <option value="Giáo trình & Sách học">{t.catBooks}</option>
+                <option value="Học tập & Văn phòng phẩm">{t.catBooks}</option>
                 <option value="Đồ dùng phòng trọ">{t.catDormItems}</option>
                 <option value="Gia dụng & Sinh hoạt">{t.catHousehold}</option>
                 <option value="Phương tiện di chuyển">{t.catVehicles}</option>

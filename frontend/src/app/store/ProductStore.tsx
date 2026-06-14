@@ -74,7 +74,7 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 const mapCategory = (dbCategory: string) => {
   const cat = dbCategory || '';
   if (['Laptop & PC', 'Tai nghe & Phụ kiện', 'Điện thoại & Tablet', 'Laptop & máy tính', 'Tai nghe & phụ kiện'].includes(cat)) return 'Điện tử & Công nghệ';
-  if (cat === 'Giáo trình & Tài liệu') return 'Giáo trình & Sách học';
+  if (cat === 'Giáo trình & Tài liệu' || cat === 'Giáo trình & Sách học') return 'Học tập & Văn phòng phẩm';
   if (cat === 'Nội thất nhỏ & Đồ phòng') return 'Đồ dùng phòng trọ';
   if (cat === 'Đồ gia dụng nhỏ') return 'Gia dụng & Sinh hoạt';
   if (cat === 'Xe đạp & Phụ tùng') return 'Phương tiện di chuyển';

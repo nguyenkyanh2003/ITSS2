@@ -92,10 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     const data = await res.json();
-    if (data.success) {
-      localStorage.setItem('token', data.token);
-      setUser(buildUserState(data.data.user, phone));
-    } else {
+    if (!data.success) {
       throw new Error(data.message || 'Đăng ký thất bại');
     }
   };

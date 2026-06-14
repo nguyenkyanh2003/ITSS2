@@ -276,7 +276,7 @@ exports.createProduct = async (req, res) => {
     }
 
     const uploadedImageFiles = uploadedFiles
-      .filter((f) => f && f.fieldname === 'images')
+      .filter((f) => f && f.fieldname === 'images');
     const uploadedImages = await Promise.all(
       uploadedImageFiles.map(async (file) => {
         const cloudinaryFile = await uploadToCloudinaryIfConfigured(file, 'husttrade/products');
@@ -303,14 +303,13 @@ exports.createProduct = async (req, res) => {
       productStatus,
       purchaseDate,
       usageLevel,
-      videoUrl,
       isFeatured: normalizedIsFeatured,
       status,
       location: normalizedLocation,
       meetingSpots: normalizedMeetingSpots,
       availableTimeSlots: normalizedAvailableTimeSlots,
       images: finalImages,
-      videoUrl: cloudinaryVideo?.url || (videoFile ? buildImageUrl(req, videoFile.path) : videoUrl),
+      videoUrl: cloudinaryVideo?.url || (videoFile ? buildImageUrl(req, videoFile.path) : (videoUrl || undefined)),
       seller: req.user._id,
     });
 
@@ -352,8 +351,8 @@ exports.getProducts = async (req, res) => {
     if (statuses.length) {
       filter.status = { $in: statuses };
     } else {
-      // Default to hide inactive products from public listings
-      filter.status = { $ne: 'inactive' };
+      // Only show available and reserved products; hide sold and inactive
+      filter.status = { $in: ['available', 'reserved'] };
     }
 
     if (productStatuses.length) {
@@ -389,7 +388,16 @@ exports.getProducts = async (req, res) => {
     });
 
     if (keyword) {
-      filter.$text = { $search: keyword };
+      // AND logic: every word in the query must appear in title, description, or category
+      const searchWords = keyword.trim().split(/\s+/).filter(Boolean);
+      const wordConditions = searchWords.map((w) => ({
+        $or: [
+          { title: new RegExp(escapeRegex(w), 'i') },
+          { description: new RegExp(escapeRegex(w), 'i') },
+          { category: new RegExp(escapeRegex(w), 'i') },
+        ],
+      }));
+      filter.$and = filter.$and ? [...filter.$and, ...wordConditions] : wordConditions;
     }
 
     const sortBy = String(req.query.sort_by || '').toLowerCase();
@@ -403,13 +411,9 @@ exports.getProducts = async (req, res) => {
       sort = { createdAt: 1 };
     } else if (sortBy === 'created_at_desc') {
       sort = { createdAt: -1 };
-    } else if (sortBy === 'relevance' && keyword) {
-      sort = { score: { $meta: 'textScore' } };
-    } else if (keyword) {
-      sort = { score: { $meta: 'textScore' }, createdAt: -1 };
     }
 
-    const projection = keyword ? { score: { $meta: 'textScore' } } : {};
+    const projection = {};
     const sellerPopulate = 'fullName email profile.avatarUrl profile.bio location isVerified stats trustStats followersCount followingCount';
 
     const [products, total] = await Promise.all([
@@ -588,6 +592,14 @@ exports.updateProduct = async (req, res) => {
         message: 'Bạn không có quyền cập nhật sản phẩm này.',
       });
     }
+
+    // Parse JSON strings that arrive as plain text from multipart/form-data
+    const fieldsToNormalize = ['availableTimeSlots', 'meetingSpots', 'location', 'images'];
+    fieldsToNormalize.forEach((field) => {
+      if (typeof req.body[field] === 'string') {
+        req.body[field] = parseMaybeJson(req.body[field]);
+      }
+    });
 
     const updates = pickUpdateFields(req.body, { isAdmin, allowStatus: isOwner });
 

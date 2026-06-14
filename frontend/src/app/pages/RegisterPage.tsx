@@ -21,7 +21,6 @@ export function RegisterPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log("Form Data:", { fullName, email, phone, password, confirmPassword });
 
     if (!fullName.trim()) {
       showNotification(errorTitle, "Vui lòng nhập họ và tên", "error");
@@ -56,8 +55,8 @@ export function RegisterPage() {
 
     try {
       await register(fullName, email, phone, password);
-      showNotification(successTitle, t.registerButton + " thành công!", "success");
-      navigate("/");
+      showNotification(successTitle, t.registerButton + " thành công! Vui lòng đăng nhập.", "success");
+      navigate("/login");
     } catch (error: any) {
       showNotification(errorTitle, error.message || "Đăng ký thất bại", "error");
     }

@@ -19,12 +19,12 @@ type SuggestionItem = {
 // ─── Category config (backend values, labels resolved from translations) ──────
 
 const CATEGORY_CONFIG = [
-  { tKey: "catElectronicsShort" as const, icon: "💻", backend: ["Laptop & PC", "Tai nghe & Phụ kiện", "Điện thoại & Tablet", "Laptop & máy tính", "Tai nghe & phụ kiện"] },
-  { tKey: "catBooksShort" as const, icon: "📚", backend: ["Giáo trình & Tài liệu"] },
-  { tKey: "catDormItemsShort" as const, icon: "🛋️", backend: ["Nội thất nhỏ & Đồ phòng"] },
-  { tKey: "catHouseholdShort" as const, icon: "🏠", backend: ["Đồ gia dụng nhỏ"] },
-  { tKey: "catVehiclesShort" as const, icon: "🚲", backend: ["Xe đạp & Phụ tùng"] },
-  { tKey: "catFashionShort" as const, icon: "👕", backend: ["Thời trang & Phụ kiện"] },
+  { tKey: "catElectronicsShort" as const, icon: "💻", backend: ["Điện tử & Công nghệ", "Laptop & PC", "Tai nghe & Phụ kiện", "Điện thoại & Tablet", "Laptop & máy tính", "Tai nghe & phụ kiện"] },
+  { tKey: "catBooksShort" as const, icon: "📚", backend: ["Học tập & Văn phòng phẩm", "Giáo trình & Sách học", "Giáo trình & Tài liệu"] },
+  { tKey: "catDormItemsShort" as const, icon: "🛋️", backend: ["Đồ dùng phòng trọ", "Nội thất nhỏ & Đồ phòng"] },
+  { tKey: "catHouseholdShort" as const, icon: "🏠", backend: ["Gia dụng & Sinh hoạt", "Đồ gia dụng nhỏ"] },
+  { tKey: "catVehiclesShort" as const, icon: "🚲", backend: ["Phương tiện di chuyển", "Xe đạp & Phụ tùng"] },
+  { tKey: "catFashionShort" as const, icon: "👕", backend: ["Quần áo & Thời trang", "Thời trang & Phụ kiện"] },
   { tKey: "catOther" as const, icon: "📦", backend: ["Khác"] },
 ];
 
@@ -450,11 +450,11 @@ export function HomePage() {
                 className="bg-white rounded-sm overflow-hidden hover:shadow-md transition-shadow group"
               >
                 {/* Image */}
-                <div className="relative aspect-square overflow-hidden bg-gray-100">
+                <div className="relative aspect-square overflow-hidden bg-gray-50 flex items-center justify-center">
                   <ImageWithFallback
                     src={product.image}
                     alt={product.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-contain"
                   />
                   {/* Discount badge */}
                   {(product.discountPercent ?? 0) > 0 && (
