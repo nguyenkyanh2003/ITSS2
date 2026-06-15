@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -19,6 +19,7 @@ export function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showNotification } = useNotification();
   const errorTitle = "Lỗi";
   const successTitle = "Thành công";
@@ -32,7 +33,7 @@ export function CheckoutPage() {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       showNotification(errorTitle, "Vui lòng đăng nhập để đặt hàng", "error");
-      navigate("/login");
+      navigate("/login", { state: { from: location.pathname } });
     }
   }, [isAuthenticated, isLoading, navigate]);
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Inbox, MessageCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -42,6 +42,7 @@ const getId = (value: string | { id?: string; _id?: string } | undefined) => {
 
 export function MessagesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { showNotification } = useNotification();
   const { t, lang } = useLanguage();
@@ -92,7 +93,7 @@ export function MessagesPage() {
   }, [isAuthenticated, showNotification]);
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   return (

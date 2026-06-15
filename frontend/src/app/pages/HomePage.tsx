@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Search, Plus, MessageCircle, Clock, Star, MapPin } from "lucide-react";
 import { useProducts, ProductQueryParams } from "../store/ProductStore";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -47,6 +47,7 @@ export function HomePage() {
   const { isAuthenticated, user, logout } = useAuth();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation();
   const { unreadCount } = useUnreadMessages(isAuthenticated);
 
   const CATEGORIES = useMemo(
@@ -69,17 +70,35 @@ export function HomePage() {
     { label: t.sortPriceHighShort, value: "price-high" },
   ], [t]);
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
 
-  const [priceFrom, setPriceFrom] = useState("");
-  const [priceTo, setPriceTo] = useState("");
-  const [condition, setCondition] = useState("");
-  const [activeCategoryIdx, setActiveCategoryIdx] = useState<number | null>(null);
-  const [activeArea, setActiveArea] = useState("");
-  const [sortBy, setSortBy] = useState("");
+  const searchQuery = searchParams.get("q") ?? "";
+  const priceFrom = searchParams.get("minPrice") ?? "";
+  const priceTo = searchParams.get("maxPrice") ?? "";
+  const condition = searchParams.get("condition") ?? "";
+  const activeCategoryIdxStr = searchParams.get("cat");
+  const activeCategoryIdx = activeCategoryIdxStr !== null ? Number(activeCategoryIdxStr) : null;
+  const activeArea = searchParams.get("area") ?? "";
+  const sortBy = searchParams.get("sort") ?? "";
+
+  const updateParam = (key: string, value: string | null, replace = true) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (!value) next.delete(key); else next.set(key, value);
+      return next;
+    }, { replace });
+  };
+
+  const setSearchQuery = (v: string) => updateParam("q", v || null);
+  const setPriceFrom = (v: string) => updateParam("minPrice", v || null);
+  const setPriceTo = (v: string) => updateParam("maxPrice", v || null);
+  const setCondition = (v: string) => updateParam("condition", v || null);
+  const setActiveCategoryIdx = (v: number | null) => updateParam("cat", v !== null ? String(v) : null, false);
+  const setActiveArea = (v: string) => updateParam("area", v || null);
+  const setSortBy = (v: string) => updateParam("sort", v || null);
 
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -276,7 +295,7 @@ export function HomePage() {
                 onClick={() => {
                   if (!isAuthenticated) {
                     showNotification("Lỗi", "Vui lòng đăng nhập để đăng sản phẩm!", "error");
-                    navigate("/login");
+                    navigate("/login", { state: { from: location.pathname } });
                   } else {
                     navigate("/add");
                   }

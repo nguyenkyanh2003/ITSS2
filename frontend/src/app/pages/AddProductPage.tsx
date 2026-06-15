@@ -1,5 +1,5 @@
 ﻿import { useState, useRef } from "react";
-import { Link, useNavigate, Navigate } from "react-router-dom";
+import { Link, useNavigate, Navigate, useLocation } from "react-router-dom";
 import { ArrowLeft, X, ImagePlus, Video } from "lucide-react";
 import { useProducts } from "../store/ProductStore";
 import { useLanguage } from "../context/LanguageContext";
@@ -16,6 +16,7 @@ const CAMPUS_SPOTS = [
 
 export function AddProductPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addProduct } = useProducts();
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
@@ -49,7 +50,7 @@ export function AddProductPage() {
   const [customSpot, setCustomSpot] = useState("");
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {

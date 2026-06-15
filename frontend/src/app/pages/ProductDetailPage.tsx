@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, MapPin, Clock, CheckCircle, Phone, Upload, MessageCircle, ChevronLeft, ChevronRight, Flag } from "lucide-react";
 import { useProducts, Product } from "../store/ProductStore";
 import { BookingModal } from "../components/BookingModal";
@@ -16,6 +16,7 @@ import { ReportModal } from "../components/ReportModal";
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { getProduct, updateProduct, removeProduct } = useProducts();
   const { t, lang } = useLanguage();
   const { isAuthenticated, user } = useAuth();
@@ -183,7 +184,7 @@ export function ProductDetailPage() {
     const token = localStorage.getItem("token");
     if (!isAuthenticated || !token) {
       showNotification(errorTitle, t.errLoginToChat, "error");
-      navigate("/login");
+      navigate("/login", { state: { from: location.pathname } });
       return;
     }
 
@@ -219,7 +220,7 @@ export function ProductDetailPage() {
     const token = localStorage.getItem('token');
     if (!token) {
       showNotification(errorTitle, t.errLoginToBook || "Vui lòng đăng nhập để đặt lịch hẹn!", "error");
-      navigate('/login');
+      navigate('/login', { state: { from: location.pathname } });
       return;
     }
 
@@ -611,7 +612,7 @@ export function ProductDetailPage() {
                     onClick={() => {
                       if (!isAuthenticated) {
                         showNotification(errorTitle, t.errLoginToBook || "Vui lòng đăng nhập để đặt lịch hẹn!", "error");
-                        navigate('/login');
+                        navigate('/login', { state: { from: location.pathname } });
                       } else {
                         setIsModalOpen(true);
                       }
@@ -681,7 +682,7 @@ export function ProductDetailPage() {
                     onClick={() => {
                       if (!isAuthenticated) {
                         showNotification(errorTitle, t.errLoginToReport, "error");
-                        navigate("/login");
+                        navigate("/login", { state: { from: location.pathname } });
                         return;
                       }
                       setIsReportModalOpen(true);

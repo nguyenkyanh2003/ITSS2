@@ -104,7 +104,7 @@ export function ChatPage() {
   };
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   if (!userId) {

@@ -1,5 +1,5 @@
 ﻿import { useState, useMemo, useEffect, useCallback, useRef, type ChangeEvent } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, User as UserIcon, Star, CheckCircle, Package, ShoppingBag, Store, X, Camera, MessageCircle, KeyRound } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -15,6 +15,7 @@ export function ProfilePage() {
   const { t, lang } = useLanguage();
   const { products } = useProducts();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showNotification } = useNotification();
   const errorTitle = "Lỗi";
   const successTitle = "Thành công";
@@ -646,7 +647,7 @@ export function ProfilePage() {
   }, [mappedOrders, activeTab, orderStatusTab, currentUserId]);
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   return (

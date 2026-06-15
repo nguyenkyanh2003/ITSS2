@@ -684,11 +684,11 @@ exports.completeOrder = async (req, res) => {
     order.status = 'completed';
     await order.save();
 
-    // Mark all products as sold
+    // Mark products as sold only if stock is depleted
     if (order.items && order.items.length > 0) {
       const productIds = order.items.map((item) => item.product);
       await Product.updateMany(
-        { _id: { $in: productIds } },
+        { _id: { $in: productIds }, stock: { $lte: 0 } },
         { status: 'sold' }
       );
     }

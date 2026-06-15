@@ -1,5 +1,5 @@
-﻿import { useState, FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+﻿import { useState, useEffect, FormEvent } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, X, KeyRound, Mail, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -227,7 +227,9 @@ export function LoginPage() {
   const { login } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showNotification } = useNotification();
+  const from = (location.state as { from?: string })?.from || "/";
   const errorTitle = "Lỗi";
   const successTitle = "Thành công";
 
@@ -235,6 +237,17 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("saved_email");
+    const savedPassword = localStorage.getItem("saved_password");
+    if (savedEmail && savedPassword) {
+      setEmail(savedEmail);
+      setPassword(savedPassword);
+      setRememberMe(true);
+    }
+  }, []);
 
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -305,8 +318,15 @@ export function LoginPage() {
 
     try {
       await login(email, password);
+      if (rememberMe) {
+        localStorage.setItem("saved_email", email);
+        localStorage.setItem("saved_password", password);
+      } else {
+        localStorage.removeItem("saved_email");
+        localStorage.removeItem("saved_password");
+      }
       showNotification(successTitle, t.loginButton + " thành công!", "success");
-      navigate("/");
+      navigate(from, { replace: true });
     } catch (error: any) {
       showNotification(errorTitle, error.message || "Đăng nhập thất bại", "error");
     }
@@ -366,6 +386,19 @@ export function LoginPage() {
                 </button>
               </div>
               {passwordTouched && passwordError && <p className="text-red-500 text-xs mt-1">{passwordError}</p>}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded accent-[#EE4D2D] cursor-pointer"
+              />
+              <label htmlFor="rememberMe" className="text-sm text-gray-600 cursor-pointer select-none">
+                Lưu tài khoản mật khẩu
+              </label>
             </div>
 
             <button
