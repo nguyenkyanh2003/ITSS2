@@ -43,7 +43,7 @@ const getId = (value: string | { id?: string; _id?: string } | undefined) => {
 export function MessagesPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { showNotification } = useNotification();
   const { t, lang } = useLanguage();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -92,7 +92,7 @@ export function MessagesPage() {
     loadConversations();
   }, [isAuthenticated, showNotification]);
 
-  if (isLoading) return null;
+  if (isAuthLoading) return null;
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }

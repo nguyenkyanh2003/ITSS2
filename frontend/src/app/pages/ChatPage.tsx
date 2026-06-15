@@ -23,7 +23,7 @@ export function ChatPage() {
   const { userId } = useParams<{ userId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { showNotification } = useNotification();
   const { t } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -103,7 +103,7 @@ export function ChatPage() {
     }
   };
 
-  if (isLoading) return null;
+  if (isAuthLoading) return null;
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
