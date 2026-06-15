@@ -840,8 +840,8 @@ exports.reserveProduct = async (req, res) => {
 
     try {
       reservedProduct = await Product.findOneAndUpdate(
-        { _id: id, status: 'available' },
-        { status: 'reserved', reservedBy: req.user._id },
+        { _id: id, status: 'available', stock: { $gte: 1 } },
+        { status: 'reserved', reservedBy: req.user._id, $inc: { stock: -1 } },
         { returnDocument: 'after' }
       );
 

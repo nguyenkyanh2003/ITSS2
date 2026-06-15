@@ -684,12 +684,22 @@ exports.completeOrder = async (req, res) => {
     order.status = 'completed';
     await order.save();
 
-    // Mark products as sold only if stock is depleted
+    // Mark products as sold if stock is depleted, clear reservation
     if (order.items && order.items.length > 0) {
       const productIds = order.items.map((item) => item.product);
+
+      // Backward-compat: old booking flow didn't decrement stock at reservation time.
+      // If a product is still 'reserved' with stock > 0, decrement now.
+      for (const item of order.items) {
+        await Product.findOneAndUpdate(
+          { _id: item.product, status: 'reserved', stock: { $gt: 0 } },
+          { $inc: { stock: -item.quantity } }
+        );
+      }
+
       await Product.updateMany(
         { _id: { $in: productIds }, stock: { $lte: 0 } },
-        { status: 'sold' }
+        { status: 'sold', reservedBy: null }
       );
     }
 
@@ -788,9 +798,9 @@ exports.cancelOrder = async (req, res) => {
       for (const item of order.items) {
         await Product.findByIdAndUpdate(
           item.product,
-          { 
+          {
             $inc: { stock: item.quantity },
-            $set: { status: 'available' }
+            $set: { status: 'available', reservedBy: null }
           },
           { session }
         );
