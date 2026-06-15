@@ -10,6 +10,44 @@ const { uploadToCloudinaryIfConfigured } = require('../utils/cloudinaryUpload');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// Map mỗi ký tự Latin cơ bản → tất cả biến thể có dấu tiếng Việt
+const VIET_CHARS = {
+  a: 'aàáâãăạảấầẩẫậắằẳẵặ',
+  e: 'eèéêẹẻẽếềểễệ',
+  i: 'iìíịỉĩ',
+  o: 'oòóôõơọỏốồổỗộớờởỡợ',
+  u: 'uùúưụủũứừửữự',
+  y: 'yỳýỵỷỹ',
+  d: 'dđ',
+};
+
+const VIET_TO_BASE = {};
+for (const [base, variants] of Object.entries(VIET_CHARS)) {
+  for (const ch of variants) {
+    VIET_TO_BASE[ch] = base;
+  }
+}
+
+// Chuyển chuỗi tìm kiếm thành regex pattern khớp cả có dấu và không dấu
+const buildViSearchPattern = (text) => {
+  let pattern = '';
+  for (const ch of text) {
+    if (/[.*+?^${}()|[\]\\]/.test(ch)) {
+      pattern += '\\' + ch;
+      continue;
+    }
+    const lower = ch.toLowerCase();
+    const base = VIET_TO_BASE[lower] || lower;
+    const variants = VIET_CHARS[base];
+    if (variants) {
+      pattern += '[' + variants + ']';
+    } else {
+      pattern += escapeRegex(ch);
+    }
+  }
+  return pattern;
+};
+
 const parseList = (value) => {
   if (!value) {
     return [];
@@ -423,9 +461,9 @@ exports.getProducts = async (req, res) => {
       const searchWords = keyword.trim().split(/\s+/).filter(Boolean);
       const wordConditions = searchWords.map((w) => ({
         $or: [
-          { title: new RegExp(escapeRegex(w), 'i') },
-          { description: new RegExp(escapeRegex(w), 'i') },
-          { category: new RegExp(escapeRegex(w), 'i') },
+          { title: new RegExp(buildViSearchPattern(w), 'i') },
+          { description: new RegExp(buildViSearchPattern(w), 'i') },
+          { category: new RegExp(buildViSearchPattern(w), 'i') },
         ],
       }));
       filter.$and = filter.$and ? [...filter.$and, ...wordConditions] : wordConditions;
@@ -949,7 +987,7 @@ exports.getSuggestions = async (req, res) => {
     }
 
     // Use prefix-anchored regex to favor index usage for prefix searches.
-    const prefix = '^' + escapeRegex(q);
+    const prefix = '^' + buildViSearchPattern(q);
     const regex = new RegExp(prefix, 'i');
 
     const candidates = await Product.find({
