@@ -415,6 +415,14 @@ export function ProductDetailPage() {
                       : t.catOther}
                   </div>
                 </div>
+                <div className="flex items-center gap-2 text-sm mb-4">
+                  <span className="text-gray-600">{t.productStockLabel}:</span>
+                  <span className="font-semibold text-gray-900">
+                    {(product.stock ?? product.quantity) !== undefined
+                      ? `${product.stock ?? product.quantity} ${t.productStockUnit}`
+                      : `1 ${t.productStockUnit}`}
+                  </span>
+                </div>
                 <div className="border-t pt-4">
                   <h3 className="font-semibold mb-2">{t.descriptionSection}</h3>
                   <p className="text-gray-700 whitespace-pre-line">
