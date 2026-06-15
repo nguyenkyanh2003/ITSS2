@@ -19,7 +19,7 @@ export function AddProductPage() {
   const location = useLocation();
   const { addProduct } = useProducts();
   const { t } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const { showNotification } = useNotification();
   const errorTitle = "Lỗi";
   const successTitle = "Thành công";
@@ -49,6 +49,7 @@ export function AddProductPage() {
   const [selectedSpots, setSelectedSpots] = useState<string[]>([]);
   const [customSpot, setCustomSpot] = useState("");
 
+  if (isLoading) return null;
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }

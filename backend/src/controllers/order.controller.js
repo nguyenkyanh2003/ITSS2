@@ -453,6 +453,7 @@ exports.getOrderById = async (req, res) => {
 };
 
 const handleProposeTimes = async (req, res) => {
+  try {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({
@@ -511,9 +512,13 @@ const handleProposeTimes = async (req, res) => {
       order: buildOrderResponse(order),
     },
   });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message || 'Lỗi server khi đề xuất khung giờ.' });
+  }
 };
 
 const handleConfirmTime = async (req, res) => {
+  try {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({
@@ -615,6 +620,9 @@ const handleConfirmTime = async (req, res) => {
       order: buildOrderResponse(order),
     },
   });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message || 'Lỗi server khi chốt khung giờ.' });
+  }
 };
 
 exports.proposeTimes = handleProposeTimes;
@@ -692,7 +700,7 @@ exports.completeOrder = async (req, res) => {
       // If a product is still 'reserved' with stock > 0, decrement now.
       for (const item of order.items) {
         await Product.findOneAndUpdate(
-          { _id: item.product, status: 'reserved', stock: { $gt: 0 } },
+          { _id: item.product, status: 'reserved', stock: { $gte: item.quantity } },
           { $inc: { stock: -item.quantity } }
         );
       }

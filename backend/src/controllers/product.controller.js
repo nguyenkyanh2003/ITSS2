@@ -888,7 +888,11 @@ exports.reserveProduct = async (req, res) => {
       });
     } catch (error) {
       if (reservedProduct) {
-        await Product.findByIdAndUpdate(reservedProduct._id, { status: 'available', reservedBy: null });
+        await Product.findByIdAndUpdate(reservedProduct._id, {
+          status: 'available',
+          reservedBy: null,
+          $inc: { stock: 1 },
+        });
       }
 
       throw error;

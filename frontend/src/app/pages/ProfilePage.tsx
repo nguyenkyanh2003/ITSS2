@@ -621,7 +621,7 @@ export function ProfilePage() {
   // Reload orders when other parts of app signal an update (e.g., reschedule completed)
   useEffect(() => {
     const handler = () => {
-      if (activeTab === 'orders') loadOrders();
+      if (activeTab === 'purchases' || activeTab === 'sales') loadOrders();
     };
     window.addEventListener('ordersUpdated', handler);
     return () => window.removeEventListener('ordersUpdated', handler);

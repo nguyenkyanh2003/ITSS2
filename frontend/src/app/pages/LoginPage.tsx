@@ -229,7 +229,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { showNotification } = useNotification();
-  const from = (location.state as { from?: string })?.from || "/";
+  const rawFrom = (location.state as { from?: string })?.from || "/";
+  const from = rawFrom.startsWith("/") && rawFrom !== "/login" ? rawFrom : "/";
   const errorTitle = "Lỗi";
   const successTitle = "Thành công";
 

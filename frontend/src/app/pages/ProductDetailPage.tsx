@@ -442,7 +442,7 @@ export function ProductDetailPage() {
                 {t.availableSlots}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {product.availableTimeSlots.map((slot, index) => (
+                {(product.availableTimeSlots ?? []).map((slot, index) => (
                   <div
                     key={index}
                     className="border border-gray-200 rounded-lg p-3 text-center"
@@ -785,7 +785,7 @@ export function ProductDetailPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t.availableSlots}</label>
                 <div className="space-y-2">
-                  {editFormData.availableTimeSlots.map((slot, index) => (
+                  {(editFormData.availableTimeSlots ?? []).map((slot, index) => (
                     <div key={index} className="flex gap-2">
                       <input
                         type="text"

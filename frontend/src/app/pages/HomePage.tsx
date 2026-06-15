@@ -80,7 +80,14 @@ export function HomePage() {
   const priceTo = searchParams.get("maxPrice") ?? "";
   const condition = searchParams.get("condition") ?? "";
   const activeCategoryIdxStr = searchParams.get("cat");
-  const activeCategoryIdx = activeCategoryIdxStr !== null ? Number(activeCategoryIdxStr) : null;
+  const activeCategoryIdxRaw = activeCategoryIdxStr !== null ? Number(activeCategoryIdxStr) : null;
+  const activeCategoryIdx =
+    activeCategoryIdxRaw !== null &&
+    Number.isInteger(activeCategoryIdxRaw) &&
+    activeCategoryIdxRaw >= 0 &&
+    activeCategoryIdxRaw < CATEGORIES.length
+      ? activeCategoryIdxRaw
+      : null;
   const activeArea = searchParams.get("area") ?? "";
   const sortBy = searchParams.get("sort") ?? "";
 
